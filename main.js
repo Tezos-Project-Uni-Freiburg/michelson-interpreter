@@ -32,77 +32,74 @@ class TypeAttribute extends enumify.Enumify {
 }
 
 class Type {
-    constructor(type, attributes, value = null, extraParameters = null) {
+    constructor(type, attributes, annots = [], value = null, extraParameters = null) {
         this.type = type;
-        this.attributes = attributes;
+        switch (type) {
+            case 'address':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'big_map':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.D];
+            case 'bls12_381_fr':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'bls12_381_g1':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'bls12_381_g2':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'bool':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'bytes':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'chain_id':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'contract':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.PA, TypeAttribute.D];
+            case 'int':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'key':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'key_hash':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'lambda':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'list':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'map':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'mutez':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'nat':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'never':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'operation':
+                this.attributes = [TypeAttribute.D];
+            case 'option':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'or':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'pair':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'sapling_state':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.D];
+            case 'sapling_transaction':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'set':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'signature':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'string':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'ticket':
+                this.attributes = [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.B];
+            case 'timestamp':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            case 'unit':
+                this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
+            default:
+                throw('unknown data type');
+        }
+        this.annots = annots;
         this.value = value;
         this.extraParameters = extraParameters;
-    }
-}
-
-function GenerateType(type, value = null, extraParameters = null) {
-    switch (type) {
-        case 'address':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'big_map':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.D], value, extraParameters);
-        case 'bls12_381_fr':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'bls12_381_g1':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'bls12_381_g2':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'bool':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'bytes':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'chain_id':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'contract':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.PA, TypeAttribute.D], value, extraParameters);
-        case 'int':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'key':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'key_hash':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'lambda':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'list':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'map':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'mutez':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'nat':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'never':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'operation':
-            return new Type(type, [TypeAttribute.D], value, extraParameters);
-        case 'option':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'or':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'pair':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'sapling_state':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.D], value, extraParameters);
-        case 'sapling_transaction':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'set':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'signature':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'string':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'ticket':
-            return new Type(type, [TypeAttribute.PM, TypeAttribute.S, TypeAttribute.B], value, extraParameters);
-        case 'timestamp':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        case 'unit':
-            return new Type(type, [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D], value, extraParameters);
-        default:
-            throw('unknown data type');
     }
 }
