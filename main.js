@@ -1,5 +1,4 @@
 'use strict';
-
 // Object.defineProperty(exports, '__esModule', { value: true });
 
 const nearley = require('nearley');
@@ -7,13 +6,16 @@ const grammar = require('./grammar');
 const enumify = require('enumify');
 const fs = require('fs');
 
-const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
-const data = fs.readFileSync('/home/berkay/Nextcloud/Proje/Michelson/old/auction.tz', 'utf8');
-
-parser.feed(data);
-const result = JSON.parse(parser.results[0])
-
 // Auxiliary definitions
+class State {
+    constructor(parameter, amount, address, storage) {
+        this.parameter = parameter;
+        this.amount = amount;
+        this.address = address;
+        this.storage = storage;
+    }
+}
+
 class TypeAttribute extends enumify.Enumify {
     // Comparable (C)
     static C = new TypeAttribute();
@@ -32,9 +34,11 @@ class TypeAttribute extends enumify.Enumify {
 }
 
 class Type {
-    constructor(type, attributes, annots = [], value = null, extraParameters = null) {
-        this.type = type;
-        switch (type) {
+    constructor(prim, args = [], annots = []) {
+        this.prim = prim;
+        this.annots = annots;
+        this.args = args;
+        switch (this.prim.toString()) {
             case 'address':
                 this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
             case 'big_map':
@@ -96,10 +100,22 @@ class Type {
             case 'unit':
                 this.attributes = [TypeAttribute.C, TypeAttribute.PM, TypeAttribute.S, TypeAttribute.PU, TypeAttribute.PA, TypeAttribute.B, TypeAttribute.D];
             default:
-                throw('unknown data type');
+                throw('unknown data type '.concat(this.prim));
         }
-        this.annots = annots;
-        this.value = value;
-        this.extraParameters = extraParameters;
     }
 }
+
+const parser = new nearley.Parser(nearley.Grammar.fromCompiled(grammar));
+const data = fs.readFileSync('/home/berkay/Nextcloud/Proje/Michelson/old/auction.tz', 'utf8');
+
+parser.feed(data);
+var result = JSON.parse(parser.results[0])
+
+// our storage
+var stack = [];
+
+// examine parameter
+var parameter = result.shift().args.shift();
+stack.push(new Type(parameter.prim, parameter.args));
+console.log(parameter);
+console.log(result);
