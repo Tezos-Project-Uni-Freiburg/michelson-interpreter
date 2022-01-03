@@ -1,6 +1,7 @@
 // Generated automatically by nearley, version 2.20.1
 // http://github.com/Hardmath123/nearley
-/*jshint esversion: 6 */
+/* jshint esversion: 6 */
+/* jshint node: true */
 (function () {
 function id(x) { return x[0]; }
 
