@@ -1,7 +1,8 @@
 // Generated automatically by nearley, version 2.20.1
 // http://github.com/Hardmath123/nearley
-/* jshint esversion: 6 */
 /* jshint node: true */
+/* jshint esversion: 6 */
+/* jshint laxcomma: true */
 (function () {
 function id(x) { return x[0]; }
 
@@ -80,7 +81,7 @@ const expandC_R = (word, annot, d) => {
             expandedC_R[expandedC_R.length - 1] = `{ "prim": "CDR", "annots": [ ${annot} ], "line": ${findLine(d)} }`;
         }
     }
-    return `[ ${expandedC_R.join(", ")}, { "line": ${findLine(d)} } ]`;
+    return `[ ${expandedC_R.join(", ")}, "line": ${findLine(d)} ]`;
 };
 const check_compare = cmp => macroCMPlist.includes(cmp);
 const expand_cmp = (cmp, annot, d) => {
@@ -90,7 +91,7 @@ const expand_cmp = (cmp, annot, d) => {
     if (annot != null) {
         binary_op = `{ "prim": "${op}", "annots": [${annot}], "line": ${findLine(d)} }`;
     }
-    return `[ ${compare}, ${binary_op}, { "line": ${findLine(d)} } ]`;
+    return `[ ${compare}, ${binary_op} ]`;
 };
 const check_dup = dup => DUPmatcher.test(dup);
 const expand_dup = (dup, annot, d) => {
@@ -101,13 +102,12 @@ const expand_dup = (dup, annot, d) => {
             t += '[ { "prim": "DIP", "args": [ ';
         }
         if (annot == null) {
-            t += `[ { "prim": "DUP" }, { "line": ${findLine(d)} } ]`;
-        }
-        else {
-            t += `[ { "prim": "DUP", "annots": [${annot}] }, { "line": ${findLine(d)} } ]`;
+            t += `[ { "prim": "DUP", "line": ${findLine(d)} } ]`;
+        } else {
+            t += `[ { "prim": "DUP", "annots": [${annot}], "line": ${findLine(d)} } ]`;
         }
         for (let i = 0; i < c; i++) {
-            t += ` ] }, { "prim": "SWAP" }, { "line": ${findLine(d)} } ]`;
+            t += ` ] }, { "prim": "SWAP", "line": ${findLine(d)} } ]`;
         }
         return t;
     }
@@ -118,39 +118,39 @@ const expand_assert = (assert, annot, d) => {
     const annotation = !!annot ? `, "annots": [ ${annot} ]` : "";
     switch (assert) {
         case "ASSERT":
-            return `[ { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_CMPEQ":
-            return `[ [ { "prim": "COMPARE"}, { "prim": "EQ" } ], {"prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ [ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "EQ", "line": ${findLine(d)} } ], {"prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_CMPGE":
-            return `[ [ { "prim":"COMPARE" }, { "prim": "GE" } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ [ { "prim":"COMPARE", "line": ${findLine(d)} }, { "prim": "GE", "line": ${findLine(d)} } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_CMPGT":
-            return `[ [ { "prim": "COMPARE" }, { "prim": "GT" } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ [ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "GT", "line": ${findLine(d)} } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_CMPLE":
-            return `[ [ { "prim": "COMPARE" }, { "prim": "LE" } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ [ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "LE", "line": ${findLine(d)} } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_CMPLT":
-            return `[ [ { "prim": "COMPARE" }, { "prim": "LT" } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ [ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "LT", "line": ${findLine(d)} } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_CMPNEQ":
-            return `[ [ { "prim": "COMPARE" }, { "prim": "NEQ" } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ [ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "NEQ", "line": ${findLine(d)} } ], { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_EQ":
-            return `[ { "prim": "EQ" }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "EQ", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_GE":
-            return `[ { "prim": "GE" }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim":"FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "GE", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim":"FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_GT":
-            return `[ { "prim": "GT" }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "GT", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_LE":
-            return `[ { "prim": "LE" }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "LE", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_LT":
-            return `[ { "prim": "LT" }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "LT", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_NEQ":
-            return `[ { "prim": "NEQ" }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "NEQ", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_SOME":
-            return `[ { "prim": "IF_NONE", "args": [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ], [ { "prim": "RENAME" } ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "IF_NONE", "args": [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ], [ { "prim": "RENAME" } ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_NONE":
-            return `[ { "prim": "IF_NONE", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "IF_NONE", "args": [ [], [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_LEFT":
-            return `[ { "prim": "IF_LEFT", "args": [ [ { "prim": "RENAME" } ], [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "IF_LEFT", "args": [ [ { "prim": "RENAME" } ], [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ] ], "line": ${findLine(d)} } ]`;
         case "ASSERT_RIGHT":
-            return `[ { "prim": "IF_LEFT", "args": [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ], [ { "prim": "RENAME" } ] ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "IF_LEFT", "args": [ [ { "prim": "UNIT" }, { "prim": "FAILWITH" ${annotation} } ], [ { "prim": "RENAME" } ] ], "line": ${findLine(d)} } ]`;
         default:
             return "";
     }
@@ -158,10 +158,10 @@ const expand_assert = (assert, annot, d) => {
 const check_fail = fail => fail === "FAIL";
 const expand_fail = (fail, annot, d) => {
     if (annot == null) {
-        return `[ { "prim": "UNIT" }, { "prim": "FAILWITH" }, { "line": ${findLine(d)} } ]`;
+        return `[ { "prim": "UNIT", "line": ${findLine(d)} }, { "prim": "FAILWITH", "line": ${findLine(d)} } ]`;
     }
     else {
-        return `[ { "prim": "UNIT" }, { "prim": "FAILWITH", "annots": [${annot}] }, { "line": ${findLine(d)} } ]`;
+        return `[ { "prim": "UNIT", "line": ${findLine(d)} }, { "prim": "FAILWITH", "annots": [${annot}], "line": ${findLine(d)} } ]`;
     }
 };
 const check_if = ifStatement => (macroIFCMPlist.includes(ifStatement) || macroIFlist.includes(ifStatement) || ifStatement === "IF_SOME"); // TODO: IF_SOME
@@ -169,31 +169,31 @@ const expandIF = (ifInstr, ifTrue, ifFalse, annot, d) => {
     const annotation = !!annot ? `, "annots": [ ${annot} ] ` : " ";
     switch (ifInstr) {
         case "IFCMPEQ":
-            return `[ { "prim": "COMPARE" }, { "prim": "EQ" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "EQ", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFCMPGE":
-            return `[ { "prim": "COMPARE" }, { "prim": "GE" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "GE", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFCMPGT":
-            return `[ { "prim": "COMPARE" }, { "prim": "GT" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "GT", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFCMPLE":
-            return `[ { "prim": "COMPARE" }, { "prim": "LE" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "LE", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFCMPLT":
-            return `[ { "prim": "COMPARE" }, { "prim": "LT" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "LT", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFCMPNEQ":
-            return `[ { "prim": "COMPARE" }, { "prim": "NEQ" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "COMPARE", "line": ${findLine(d)} }, { "prim": "NEQ", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFEQ":
-            return `[ { "prim":"EQ" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim":"EQ", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFGE":
-            return `[ { "prim": "GE" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "GE", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFGT":
-            return `[ { "prim": "GT" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "GT", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFLE":
-            return `[ { "prim": "LE" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "LE", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFLT":
-            return `[ { "prim": "LT" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "LT", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IFNEQ":
-            return `[ { "prim": "NEQ" }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "NEQ", "line": ${findLine(d)} }, { "prim": "IF", "args": [ [ ${ifTrue} ], [ ${ifFalse} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         case "IF_SOME":
-            return `[ { "prim": "IF_NONE", "args": [ [ ${ifFalse} ], [ ${ifTrue} ] ]${annotation}}, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "IF_NONE", "args": [ [ ${ifFalse} ], [ ${ifTrue} ] ]${annotation}, "line": ${findLine(d)}} ]`;
         default:
             return "";
     }
@@ -212,7 +212,7 @@ const expandDIP = (dip, instruction, annot, d) => {
         }
         t += " }]";
         for (let i = 0; i < c - 1; i++) {
-            t += ` ] }, { "line": ${findLine(d)} } ]`;
+            t += ` ], "line": ${findLine(d)} } ]`;
         }
         return t;
     }
@@ -226,15 +226,15 @@ const expand_other = (word, annot, d) => {
     if (word === "UNPAIR") {
         if (annot == null) {
             // return '[ [ { "prim": "DUP" }, { "prim": "CAR" }, { "prim": "DIP", "args": [ [ { "prim": "CDR" } ] ] } ] ]';
-            return `[ { "prim": "DUP" }, { "prim": "CAR" }, { "prim": "DIP", "args": [ {"prim": "CDR" } ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "CAR", "line": ${findLine(d)} }, { "prim": "DIP", "args": [ {"prim": "CDR" } ], "line": ${findLine(d)} } ]`;
         }
         else if (annot.length === 1) {
             // return `[ [ { "prim": "DUP" }, { "prim": "CAR", "annots": [${annot}] }, { "prim": "DIP", "args": [ [ { "prim": "CDR" } ] ]  } ] ]`;
-            return `[ { "prim": "DUP" }, { "prim": "CAR", "annots": [${annot}] }, { "prim": "DIP", "args": [ { "prim": "CDR" } ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "CAR", "annots": [${annot}], "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "CDR" } ], "line": ${findLine(d)} } ]`;
         }
         else if (annot.length === 2) {
             // return `[ [ { "prim": "DUP" }, { "prim": "CAR", "annots": [${annot[0]}] }, { "prim": "DIP", "args": [ [ { "prim": "CDR", "annots": [${annot[1]}] } ] ]  } ] ]`;
-            return `[ { "prim": "DUP" }, { "prim": "CAR", "annots": [${annot[0]}] }, { "prim": "DIP", "args": [ { "prim": "CDR", "annots": [${annot[1]}] } ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "CAR", "annots": [ ${annot[0]} ], "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "CDR", "annots": [ ${annot[1]} ] } ], "line": ${findLine(d)} } ]`;
         }
         else {
             return "";
@@ -246,14 +246,13 @@ const expand_other = (word, annot, d) => {
             //                { "prim": "CAR" },
             //                { "prim": "DIP", "args": [ [ { "prim": "CDR" } ] ] } ],
             //                {"prim":"DIP","args":[[[{"prim":"DUP"},{"prim":"CAR"},{"prim":"DIP","args":[[{"prim":"CDR"}]]}]]]}]`;
-            return `[ { "prim": "DUP" }, { "prim": "CAR" }, { "prim": "DIP", "args": [ { "prim": "CDR" } ] }, { "prim": "DIP", "args": [ { "prim": "DUP" }, { "prim": "CAR" }, { "prim": "DIP", "args": [ { "prim": "CDR" } ] } ] }, { "line": ${findLine(d)} } ]`;
-        }
-        else {
+            return `[ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "CAR", "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "CDR", "line": ${findLine(d)} } ], "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "CAR", "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "CDR", "line": ${findLine(d)} } ] } ], "line": ${findLine(d)} } ]`;
+        } else {
             // return `[ [ { "prim": "DUP" },
             //                { "prim": "CAR" },
             //                { "prim": "DIP", "args": [ [ { "prim": "CDR" } ] ] } ],
             //                {"prim":"DIP","args":[[[{"prim":"DUP"},{"prim":"CAR"},{"prim":"DIP","args":[[{"prim":"CDR"}]],"annots": [${annot}]}]]]}]`;
-            return `[ { "prim": "DUP" }, { "prim": "CAR" }, { "prim": "DIP", "args": [ { "prim": "CDR" } ] }, { "prim": "DIP", "args": [ { "prim": "DUP" }, { "prim": "CAR" }, { "prim": "DIP", "args": [ { "prim": "CDR" } ], "annots": [ ${annot} ] } ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "CAR", "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "CDR", "line": ${findLine(d)} } ], "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "CAR", "line": ${findLine(d)} }, { "prim": "DIP", "args": [ { "prim": "CDR", "line": ${findLine(d)} } ], "annots": [ ${annot} ] } ], "line": ${findLine(d)} } ]`;
         }
     }
 };
@@ -266,17 +265,17 @@ const nestSetCadr = (r, d) => {
     const c = r.charAt(0);
     if (r.length === 1) {
         if (c === "A") {
-            return `[ { "prim": "CDR", "annots": [ "@%%" ] }, { "prim": "SWAP" }, { "prim": "PAIR", "annots": [ "%", "%@" ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "CDR", "annots": [ "@%%" ], "line": ${findLine(d)} }, { "prim": "SWAP", "line": ${findLine(d)} }, { "prim": "PAIR", "annots": [ "%", "%@" ], "line": ${findLine(d)} } ]`;
         }
         else if (c === "D") {
-            return `[ { "prim": "CAR", "annots": [ "@%%" ] }, { "prim": "PAIR", "annots": [ "%@", "%" ] }, { "line": ${findLine(d)} } ]`;
+            return `[ { "prim": "CAR", "annots": [ "@%%" ], "line": ${findLine(d)} }, { "prim": "PAIR", "annots": [ "%@", "%" ], "line": ${findLine(d)} } ]`;
         }
     }
     if (c === "A") {
-        return `[ { "prim": "DUP" }, { "prim": "DIP", "args": [ [ { "prim": "CAR", "annots": [ "@%%" ] }, ${nestSetCadr(r.slice(1), d)} ] ] }, { "prim": "CDR", "annots": [ "@%%" ] }, { "prim": "SWAP" }, { "prim": "PAIR", "annots": [ "%@", "%@" ] }, { "line": ${findLine(d)} } ]`;
+        return `[ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "DIP", "args": [ [ { "prim": "CAR", "annots": [ "@%%" ] }, ${nestSetCadr(r.slice(1), d)} ] ], "line": ${findLine(d)} }, { "prim": "CDR", "annots": [ "@%%" ], "line": ${findLine(d)} }, { "prim": "SWAP", "line": ${findLine(d)} }, { "prim": "PAIR", "annots": [ "%@", "%@" ], "line": ${findLine(d)} } ]`;
     }
     else if (c === "D") {
-        return `[ { "prim": "DUP" }, { "prim": "DIP", "args": [ [ { "prim": "CDR", "annots": [ "@%%" ] }, ${nestSetCadr(r.slice(1), d)} ] ] }, { "prim": "CAR", "annots": [ "@%%" ] }, { "prim": "PAIR", "annots": [ "%@", "%@" ] }, { "line": ${findLine(d)} } ]`;
+        return `[ { "prim": "DUP", "line": ${findLine(d)} }, { "prim": "DIP", "args": [ [ { "prim": "CDR", "annots": [ "@%%" ] }, ${nestSetCadr(r.slice(1), d)} ] ], "line": ${findLine(d)} }, { "prim": "CAR", "annots": [ "@%%" ], "line": ${findLine(d)} }, { "prim": "PAIR", "annots": [ "%@", "%@" ], "line": ${findLine(d)} } ]`;
     }
 };
 const checkKeyword = word => {
@@ -518,7 +517,7 @@ const dataSetToJsonNoSemi = (f, s) => {
     } else {
         return f.map(x => x[0]).map(x => nestedArrayChecker(x));
     }
-}
+};
 /**
  * Given a list of michelson instructions, convert it into JSON.
  * Example: "{CAR; NIL operation; PAIR;}" ->

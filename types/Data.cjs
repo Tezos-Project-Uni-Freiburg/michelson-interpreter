@@ -5,9 +5,9 @@
 const { v4: uuidv4 } = require('uuid');
 
 class Data {
-    constructor(prim, args, annots) {
-        this.prim = prim;
-        switch (this.prim) {
+    constructor(type, value, name) {
+        this.type = type;
+        switch (this.type) {
             case 'address':
                 this.attributes = ["C", "PM", "S", "PU", "PA", "B", "D"];
                 break;
@@ -99,10 +99,10 @@ class Data {
                 this.attributes = ["C", "PM", "S", "PU", "PA", "B", "D"];
                 break;
             default:
-                throw ('unknown data type '.concat(this.prim));
+                throw ('unknown data type '.concat(this.type));
         }
-        this.args = JSON.parse(JSON.stringify(args));
-        this.annots = JSON.parse(JSON.stringify(annots));
+        this.value = JSON.parse(JSON.stringify(value));
+        this.name = JSON.parse(JSON.stringify(name));
         this.id = uuidv4();
     }
 }
