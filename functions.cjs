@@ -28,6 +28,13 @@ function instructionRequirement(instruction) {
     const output = [];
     switch(instruction) {
         case 'ABS':
+        case 'EQ':
+        case 'GE':
+        case 'GT':
+        case 'ISNAT':
+        case 'LE':
+        case 'LT':
+        case 'NEQ':
             output.push(false, 'int');
             break;
         case 'ADD':
@@ -40,83 +47,61 @@ function instructionRequirement(instruction) {
             output.push(false, 'contract');
             break;
         case 'AMOUNT':
+        case 'APPLY': // TODO: how to figure out ty1, ty2 and ty3?
+        case 'BALANCE':
+        case 'CHAIN_ID':
+        case 'COMPARE': // TODO: how to figure out that both types are comparable?
+        case 'CONS': // TODO: how to figure out that the ty1 and type of list is the same?
+        case 'CONTRACT': // TODO: how to figure out the type of contract & address?
+        case 'CREATE_CONTRACT': // TODO
+        case 'DIG':
+        case 'DIP':
+        case 'DROP':
+        case 'DUG':
+        case 'DUP':
+        case 'EMPTY_BIG_MAP':
+        case 'EMPTY_MAP':
+        case 'EMPTY_SET':
+        case 'LAMBDA':
+        case 'LEFT':
+        case 'LEVEL':
+        case 'NIL':
+        case 'NONE':
+        case 'NOW':
+        case 'PUSH':
+        case 'SAPLING_EMPTY_STATE':
+        case 'SELF':
+        case 'SELF_ADDRESS':
+        case 'SENDER':
+        case 'TOTAL_VOTING_POWER':
+        case 'UNIT':
             output.push(false, null);
             break;
         case 'AND':
             output.push(true, ['bool', 'bool'], ['nat', 'nat'], ['int', 'nat']);
             break;
-        case 'APPLY':
-            // TODO: how to figure out ty1, ty2 and ty3?
-            output.push(false, null);
-            break;
-        case 'BALANCE':
-            output.push(false, null);
-            break;
         case 'BLAKE2B':
+        case 'KECCAK':
+        case 'SHA256':
+        case 'SHA3':
+        case 'SHA512':
             output.push(false, 'bytes');
             break;
         case 'CAR':
-            output.push(false, 'pair');
-            break;
         case 'CDR':
+        case 'JOIN_TICKETS':
             output.push(false, 'pair');
-            break;
-        case 'CHAIN_ID':
-            output.push(false, null);
             break;
         case 'CHECK_SIGNATURE':
             output.push(false, 'key', 'signature', 'bytes');
-            break;
-        case 'COMPARE':
-            // TODO: how to figure out that both types are comparable?
-            output.push(false, null);
             break;
         case 'CONCAT':
             // TODO: how to figure out that the type of list is either string or bytes?
             output.push(true, ['string', 'string'], ['bytes', 'bytes'], ['list']);
             break;
-        case 'CONS':
-            // TODO: how to figure out that the ty1 and type of list is the same?
-            output.push(false, null);
-            break;
-        case 'CONTRACT':
-            // TODO: how to figure out the type of contract & address?
-            output.push(false, null);
-            break;
-        case 'CREATE_CONTRACT':
-            // TODO
-            output.push(false, null);
-            break;
-        case 'DIG':
-            output.push(false, null);
-            break;
-        case 'DIP':
-            output.push(false, null);
-            break;
-        case 'DROP':
-            output.push(false, null);
-            break;
-        case 'DUG':
-            output.push(false, null);
-            break;
-        case 'DUP':
-            output.push(false, null);
-            break;
         case 'EDIV':
             output.push(true, ['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['mutez', 'nat'], ['mutez', 'mutez']);
-            break;
-        case 'EMPTY_BIG_MAP':
-            output.push(false, null);
-            break;
-        case 'EMPTY_MAP':
-            output.push(false, null);
-            break;
-        case 'EMPTY_SET':
-            output.push(false, null);
-            break;
-        case 'EQ':
-            output.push(false, 'int');
             break;
         case 'EXEC':
             // TODO: how to determine ty1 and lambda's type match?
@@ -126,77 +111,44 @@ function instructionRequirement(instruction) {
             // TODO: actually FAILWITH takes any type that's packable, need to figure out
             output.push(false, 'unit');
             break;
-        case 'GE':
-            output.push(false, 'int');
-            break;
         case 'GET':
             output.push(true, ['', 'map'], ['', 'big_map']);
             break;
         case 'GET_AND_UPDATE':
             output.push(true, ['', 'option', 'map'], ['', 'option', 'big_map']);
             break;
-        case 'GT':
-            output.push(false, 'int');
-            break;
         case 'HASH_KEY':
             output.push(false, 'key');
             break;
         case 'IF':
+        case 'LOOP':
             output.push(false, 'bool');
             break;
         case 'IF_CONS':
+        case 'PAIRING_CHECK':
             output.push(false, 'list');
             break;
         case 'IF_LEFT':
+        case 'LOOP_LEFT':
             output.push(false, 'or');
             break;
         case 'IF_NONE':
+        case 'SET_DELEGATE':
             output.push(false, 'option');
             break;
         case 'IMPLICIT_ACCOUNT':
+        case 'VOTING_POWER':
             output.push(false, 'key_hash');
             break;
         case 'INT':
             output.push(true, ['nat'], ['bls12_381_fr']);
             break;
-        case 'ISNAT':
-            output.push(false, 'int');
-            break;
         case 'ITER':
             output.push(true, ['list'], ['set'], ['map']);
             break;
-        case 'JOIN_TICKETS':
-            output.push(false, 'pair');
-            break;
-        case 'KECCAK':
-            output.push(false, 'bytes');
-            break;
-        case 'LAMBDA':
-            output.push(false, null);
-            break;
-        case 'LE':
-            output.push(false, 'int');
-            break;
-        case 'LEFT':
-            output.push(false, null);
-            break;
-        case 'LEVEL':
-            output.push(false, null);
-            break;
-        case 'LOOP':
-            output.push(false, 'bool');
-            break;
-        case 'LOOP_LEFT':
-            output.push(false, 'or');
-            break;
         case 'LSL':
-            output.push(false, 'nat', 'nat');
-            break;
         case 'LSR':
             output.push(false, 'nat', 'nat');
-            break;
-        case 'LT':
-            output.push(false, 'int');
             break;
         case 'MAP':
             output.push(true, ['list'], ['map']);
@@ -210,6 +162,64 @@ function instructionRequirement(instruction) {
                               ['bls12_381_g1', 'bls12_381_fr'], ['bls12_381_g2', 'bls12_381_fr'],
                               ['bls12_381_fr', 'bls12_381_fr'], ['nat', 'bls12_381_fr'],
                               ['int', 'bls12_381_fr'], ['bls12_381_fr', 'nat'], ['bls12_381_fr', 'int']);
+            break;
+        case 'NEG':
+            output.push(true, ['nat'], ['int'], ['bls12_381_g1'], ['bls12_381_g2'], ['bls12_381_fr']);
+            break;
+        case 'NEVER':
+            output.push(false, 'never');
+            break;
+        case 'NOT':
+            output.push(true, ['bool'], ['nat'], ['int']);
+            break;
+        case 'OR':
+        case 'XOR':
+            output.push(true, ['bool', 'bool'], ['nat', 'nat']);
+            break;
+        case 'PACK': // TODO: how to determine ty1?
+        case 'RIGHT':
+        case 'SOME':
+        case 'SOURCE':
+            output.push(false, '');
+            break;
+        case 'PAIR': // TODO: how to determine ty1 & ty2? && there's a PAIR n version now that's not represented here
+        case 'SWAP':
+        case 'UNPAIR': // TODO: how to implement UNPAIR n version?
+            output.push(false, '', '');
+            break;
+        case 'READ_TICKET':
+            output.push(false, 'ticket');
+            break;
+        case 'SAPLING_VERIFY_UPDATE':
+            output.push(false, 'sapling_transaction', 'sapling_state');
+            break;
+        case 'SIZE':
+            output.push(true, ['set'], ['map'], ['list'], ['string'], ['bytes']);
+            break;
+        case 'SLICE':
+            output.push(true, ['nat', 'nat', 'string'], ['nat', 'nat', 'bytes']);
+            break;
+        case 'SPLIT_TICKET':
+            output.push(false, 'ticket', 'pair');
+            break;
+        case 'SUB':
+            output.push(true, ['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
+                              ['int', 'int'], ['timestamp', 'int'],
+                              ['timestamp', 'timestamp'], ['mutez', 'mutez']);
+            break;
+        case 'TICKET':
+            output.push(false, '', 'nat');
+            break;
+        case 'TRANSFER_TOKENS':
+            output.push(false, '', 'mutez', 'contract');
+            break;
+        case 'UNPACK':
+            output.push(false, '', 'bytes');
+            break;
+        case 'UPDATE':
+            // TODO: how to implement UPDATE n version?
+            output.push(true, ['', 'bool', 'set'], ['', 'option', 'map'],
+                              ['', 'option', 'big_map']);
             break;
         default:
             throw ('unknown instruction type '.concat(instruction));
