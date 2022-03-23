@@ -5,10 +5,7 @@
 const nearley = require("nearley");
 const fs = require("fs");
 
-const { Data } = require("./types/Data.cjs");
-const { Delta } = require("./types/Delta.cjs");
-const { State } = require("./types/State.cjs");
-const { Step } = require("./types/Step.cjs");
+const { Data, Delta, State, Step } = require('./types.cjs');
 const Functions = require("./functions.cjs");
 const Grammar = require("./grammar.cjs");
 
@@ -40,15 +37,15 @@ function main(state, script) {
     steps.push(new Step(new Delta([], [stack[0]]), [parameter, storage]));
 
     // start iterating
-    for (const i in instructions) {
+    for (const i of instructions) {
         Functions.processInstruction(JSON.parse(JSON.stringify(i)), stack, steps, states);
     }
 
     // examine parameter
-    // console.dir(instructions, { depth: null });
+    console.dir(stack, { depth: null });
 }
 
 // test run:
-const data = fs.readFileSync('/Users/berkay/GitHub/michelson-parser/test/old_auction.tz', 'utf8');
+const data = fs.readFileSync('/Users/berkay/test.tz', 'utf8');
 const state = new State(200000, 300, 0, "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx", "default", "2022-01-01T00:00:00.000Z", "KT1QuofAgnsWffHzLA7D78rxytJruGHDe7XG");
 main(state, data);

@@ -4,7 +4,7 @@
 // const { unstable } = require("jshint/src/options");
 
 
-const { Data } = require("./types/Data.cjs");
+const { Data, Delta, State, Step } = require('./types.cjs');
 
 function initialize(parameter, storage) {
     return new Data("pair",
@@ -20,12 +20,39 @@ function initialize(parameter, storage) {
                     []);
 }
 
-function processInstruction(instruction, stack, steps, states) {
-
+// returns [null or >= 1 strings]
+function getInstructionParameters(requirements, stack) {
+    if (requirements[0]) {
+        const reqSize = requirements[1].reduce((previousValue, currentValue) =>
+                                       previousValue > currentValue.length ? previousValue
+                                       : currentValue.length, 0);
+        if (reqSize > stack.length) {
+            throw ('not enough elements in the stack');
+        }
+        const reqElems = stack.slice(0, reqSize);
+        for (let i = 0; i < requirements[1].length; i++) {
+            if (reqElems.slice(0, requirements[1][i].length).map(x => x.prim).every((e, index) => e === requirements[1][i][index])) {
+                return reqElems.slice(0, requirements[1][i].length);
+            }
+        }
+    } else if (requirements.length == 2 && requirements[1][0] === null) {
+        return [null];
+    } else {
+        let reqSize = requirements[1].length;
+        if (reqSize > stack.length) {
+            throw ('not enough elements in the stack');
+        }
+        const reqElems = stack.slice(0, reqSize);
+        if (!requirements[1].every((x, i) => x == reqElems[i].prim)) {
+            throw ('stack elements and opcode req does not match');
+        }
+        return reqElems;
+    }
 }
 
-function instructionRequirement(instruction) {
-    const output = [];
+// returns [true/false, [>= 1 strings]... if true else >= 1 strings]
+function getInstructionRequirements(instruction) {
+    const requirements = [];
     switch(instruction) {
         case 'ABS':
         case 'EQ':
@@ -35,16 +62,16 @@ function instructionRequirement(instruction) {
         case 'LE':
         case 'LT':
         case 'NEQ':
-            output.push(false, 'int');
+            requirements.push(false, ['int']);
             break;
         case 'ADD':
-            output.push(true, ['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
+            requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['timestamp', 'int'], ['int', 'timestamp'],
                               ['mutez', 'mutez'], ['bls12_381_g1', 'bls12_381_g1'],
-                              ['bls12_381_g2', 'bls12_381_g2'], ['bls12_381_fr', 'bls12_381_fr']);
+                              ['bls12_381_g2', 'bls12_381_g2'], ['bls12_381_fr', 'bls12_381_fr']]);
             break;
         case 'ADDRESS':
-            output.push(false, 'contract');
+            requirements.push(false, ['contract']);
             break;
         case 'AMOUNT':
         case 'APPLY': // TODO: how to figure out ty1, ty2 and ty3?
@@ -75,157 +102,177 @@ function instructionRequirement(instruction) {
         case 'SENDER':
         case 'TOTAL_VOTING_POWER':
         case 'UNIT':
-            output.push(false, null);
+            requirements.push(false, [null]);
             break;
         case 'AND':
-            output.push(true, ['bool', 'bool'], ['nat', 'nat'], ['int', 'nat']);
+            requirements.push(true, [['bool', 'bool'], ['nat', 'nat'], ['int', 'nat']]);
             break;
         case 'BLAKE2B':
         case 'KECCAK':
         case 'SHA256':
         case 'SHA3':
         case 'SHA512':
-            output.push(false, 'bytes');
+            requirements.push(false, ['bytes']);
             break;
         case 'CAR':
         case 'CDR':
         case 'JOIN_TICKETS':
-            output.push(false, 'pair');
+            requirements.push(false, ['pair']);
             break;
         case 'CHECK_SIGNATURE':
-            output.push(false, 'key', 'signature', 'bytes');
+            requirements.push(false, ['key', 'signature', 'bytes']);
             break;
         case 'CONCAT':
             // TODO: how to figure out that the type of list is either string or bytes?
-            output.push(true, ['string', 'string'], ['bytes', 'bytes'], ['list']);
+            requirements.push(true, [['string', 'string'], ['bytes', 'bytes'], ['list']]);
             break;
         case 'EDIV':
-            output.push(true, ['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
-                              ['int', 'int'], ['mutez', 'nat'], ['mutez', 'mutez']);
+            requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
+                              ['int', 'int'], ['mutez', 'nat'], ['mutez', 'mutez']]);
             break;
         case 'EXEC':
             // TODO: how to determine ty1 and lambda's type match?
-            output.push(false, '', 'lambda');
+            requirements.push(false, ['', 'lambda']);
             break;
         case 'FAILWITH':
             // TODO: actually FAILWITH takes any type that's packable, need to figure out
-            output.push(false, 'unit');
+            requirements.push(false, ['unit']);
             break;
         case 'GET':
-            output.push(true, ['', 'map'], ['', 'big_map']);
+            requirements.push(true, [['', 'map'], ['', 'big_map']]);
             break;
         case 'GET_AND_UPDATE':
-            output.push(true, ['', 'option', 'map'], ['', 'option', 'big_map']);
+            requirements.push(true, [['', 'option', 'map'], ['', 'option', 'big_map']]);
             break;
         case 'HASH_KEY':
-            output.push(false, 'key');
+            requirements.push(false, ['key']);
             break;
         case 'IF':
         case 'LOOP':
-            output.push(false, 'bool');
+            requirements.push(false, ['bool']);
             break;
         case 'IF_CONS':
         case 'PAIRING_CHECK':
-            output.push(false, 'list');
+            requirements.push(false, ['list']);
             break;
         case 'IF_LEFT':
         case 'LOOP_LEFT':
-            output.push(false, 'or');
+            requirements.push(false, ['or']);
             break;
         case 'IF_NONE':
         case 'SET_DELEGATE':
-            output.push(false, 'option');
+            requirements.push(false, ['option']);
             break;
         case 'IMPLICIT_ACCOUNT':
         case 'VOTING_POWER':
-            output.push(false, 'key_hash');
+            requirements.push(false, ['key_hash']);
             break;
         case 'INT':
-            output.push(true, ['nat'], ['bls12_381_fr']);
+            requirements.push(true, [['nat'], ['bls12_381_fr']]);
             break;
         case 'ITER':
-            output.push(true, ['list'], ['set'], ['map']);
+            requirements.push(true, [['list'], ['set'], ['map']]);
             break;
         case 'LSL':
         case 'LSR':
-            output.push(false, 'nat', 'nat');
+            requirements.push(false, ['nat', 'nat']);
             break;
         case 'MAP':
-            output.push(true, ['list'], ['map']);
+            requirements.push(true, [['list'], ['map']]);
             break;
         case 'MEM':
-            output.push(true, ['', 'set'], ['', 'map'], ['', 'big_map']);
+            requirements.push(true, [['', 'set'], ['', 'map'], ['', 'big_map']]);
             break;
         case 'MUL':
-            output.push(true, ['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
+            requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['mutez', 'nat'], ['nat', 'mutez'],
                               ['bls12_381_g1', 'bls12_381_fr'], ['bls12_381_g2', 'bls12_381_fr'],
                               ['bls12_381_fr', 'bls12_381_fr'], ['nat', 'bls12_381_fr'],
-                              ['int', 'bls12_381_fr'], ['bls12_381_fr', 'nat'], ['bls12_381_fr', 'int']);
+                              ['int', 'bls12_381_fr'], ['bls12_381_fr', 'nat'], ['bls12_381_fr', 'int']]);
             break;
         case 'NEG':
-            output.push(true, ['nat'], ['int'], ['bls12_381_g1'], ['bls12_381_g2'], ['bls12_381_fr']);
+            requirements.push(true, [['nat'], ['int'], ['bls12_381_g1'], ['bls12_381_g2'], ['bls12_381_fr']]);
             break;
         case 'NEVER':
-            output.push(false, 'never');
+            requirements.push(false, ['never']);
             break;
         case 'NOT':
-            output.push(true, ['bool'], ['nat'], ['int']);
+            requirements.push(true, [['bool'], ['nat'], ['int']]);
             break;
         case 'OR':
         case 'XOR':
-            output.push(true, ['bool', 'bool'], ['nat', 'nat']);
+            requirements.push(true, [['bool', 'bool'], ['nat', 'nat']]);
             break;
         case 'PACK': // TODO: how to determine ty1?
         case 'RIGHT':
         case 'SOME':
         case 'SOURCE':
-            output.push(false, '');
+            requirements.push(false, ['']);
             break;
         case 'PAIR': // TODO: how to determine ty1 & ty2? && there's a PAIR n version now that's not represented here
         case 'SWAP':
         case 'UNPAIR': // TODO: how to implement UNPAIR n version?
-            output.push(false, '', '');
+            requirements.push(false, ['', '']);
             break;
         case 'READ_TICKET':
-            output.push(false, 'ticket');
+            requirements.push(false, ['ticket']);
             break;
         case 'SAPLING_VERIFY_UPDATE':
-            output.push(false, 'sapling_transaction', 'sapling_state');
+            requirements.push(false, ['sapling_transaction', 'sapling_state']);
             break;
         case 'SIZE':
-            output.push(true, ['set'], ['map'], ['list'], ['string'], ['bytes']);
+            requirements.push(true, [['set'], ['map'], ['list'], ['string'], ['bytes']]);
             break;
         case 'SLICE':
-            output.push(true, ['nat', 'nat', 'string'], ['nat', 'nat', 'bytes']);
+            requirements.push(true, [['nat', 'nat', 'string'], ['nat', 'nat', 'bytes']]);
             break;
         case 'SPLIT_TICKET':
-            output.push(false, 'ticket', 'pair');
+            requirements.push(false, ['ticket', 'pair']);
             break;
         case 'SUB':
-            output.push(true, ['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
+            requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['timestamp', 'int'],
-                              ['timestamp', 'timestamp'], ['mutez', 'mutez']);
+                              ['timestamp', 'timestamp'], ['mutez', 'mutez']]);
             break;
         case 'TICKET':
-            output.push(false, '', 'nat');
+            requirements.push(false, ['', 'nat']);
             break;
         case 'TRANSFER_TOKENS':
-            output.push(false, '', 'mutez', 'contract');
+            requirements.push(false, ['', 'mutez', 'contract']);
             break;
         case 'UNPACK':
-            output.push(false, '', 'bytes');
+            requirements.push(false, ['', 'bytes']);
             break;
         case 'UPDATE':
             // TODO: how to implement UPDATE n version?
-            output.push(true, ['', 'bool', 'set'], ['', 'option', 'map'],
-                              ['', 'option', 'big_map']);
+            requirements.push(true, [['', 'bool', 'set'], ['', 'option', 'map'],
+                              ['', 'option', 'big_map']]);
             break;
         default:
             throw ('unknown instruction type '.concat(instruction));
     }
-    return output;
+    return requirements;
 }
+
+function processInstruction(instruction, stack, steps, states) {
+    const parameters = getInstructionParameters(getInstructionRequirements(instruction.prim), stack);
+    // We get the required elements of the stack with this.
+
+    // We need to do the actual operation here. But how?
+    const result = global["apply" + instruction.prim].call(null, parameters, stack);
+
+    // We need to add whatever we removed or added from the stack into a Step and add it to steps.
+
+    // We need to update our state(s)?
+}
+
+
+
+// instruction functions start
+function applyABS(parameter, stack) {
+
+}
+// instruction functions end
 
 exports.initialize = initialize;
 exports.processInstruction = processInstruction;
