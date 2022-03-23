@@ -6,13 +6,13 @@ const nearley = require("nearley");
 const fs = require("fs");
 
 const { Data, Delta, State, Step } = require('./types.cjs');
-const Functions = require("./functions.cjs");
+const { initialize, processInstruction } = require("./functions.cjs");
 const Grammar = require("./grammar.cjs");
 
 const parser = new nearley.Parser(nearley.Grammar.fromCompiled(Grammar));
 
 function main(state, script) {
-    parser.feed(data);
+    parser.feed(script);
     if (parser.results.length > 1) {
         console.log("Multiple parsings!");
         return;
@@ -29,7 +29,7 @@ function main(state, script) {
     const states = [];
 
     // incl
-    stack.push(Functions.initialize(parameter.args[0], storage.args[0]));
+    stack.push(initialize(parameter.args[0], storage.args[0]));
 
     // save state
     states.push(JSON.parse(JSON.stringify(state)));
@@ -38,7 +38,7 @@ function main(state, script) {
 
     // start iterating
     for (const i of instructions) {
-        Functions.processInstruction(JSON.parse(JSON.stringify(i)), stack, steps, states);
+        processInstruction(JSON.parse(JSON.stringify(i)), stack, steps, states);
     }
 
     // examine parameter
@@ -46,6 +46,6 @@ function main(state, script) {
 }
 
 // test run:
-const data = fs.readFileSync('/Users/berkay/test.tz', 'utf8');
+const script = fs.readFileSync('/Users/berkay/test.tz', 'utf8');
 const state = new State(200000, 300, 0, "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx", "default", "2022-01-01T00:00:00.000Z", "KT1QuofAgnsWffHzLA7D78rxytJruGHDe7XG");
-main(state, data);
+main(state, script);

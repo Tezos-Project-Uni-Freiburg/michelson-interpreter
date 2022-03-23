@@ -2,7 +2,7 @@
 /* jshint esversion: 6 */
 /* jshint node: true */
 
-const { v4: uuidv4 } = require('uuid');
+// const { v4: uuidv4 } = require('uuid');
 
 class Data {
     constructor(prim, args, annots) {
@@ -55,7 +55,7 @@ class Data {
         }
         this.args = JSON.parse(JSON.stringify(args));
         this.annots = JSON.parse(JSON.stringify(annots));
-        this.id = uuidv4();
+        // this.id = uuidv4();
     }
 }
 
