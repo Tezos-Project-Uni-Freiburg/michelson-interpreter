@@ -5,7 +5,7 @@
 // const { v4: uuidv4 } = require('uuid');
 
 class Data {
-    constructor(prim, args, annots) {
+    constructor(prim, value, name = "") {
         this.prim = prim;
         switch (this.prim) {
             case 'address':
@@ -53,8 +53,9 @@ class Data {
             default:
                 throw ('unknown data type '.concat(this.prim));
         }
-        this.args = JSON.parse(JSON.stringify(args));
-        this.annots = JSON.parse(JSON.stringify(annots));
+        // this.value = JSON.parse(JSON.stringify(value));
+        this.value = value;
+        this.name = name;
         // this.id = uuidv4();
     }
 }

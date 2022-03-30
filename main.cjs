@@ -38,7 +38,7 @@ function main(state, script) {
 
     // start iterating
     for (const i of instructions) {
-        processInstruction(JSON.parse(JSON.stringify(i)), stack, steps, states);
+        processInstruction(i, stack, steps, states);
     }
 
     // examine parameter

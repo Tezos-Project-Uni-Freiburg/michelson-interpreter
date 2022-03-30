@@ -2,22 +2,17 @@
 /* jshint esversion: 6 */
 /* jshint node: true */
 // const { unstable } = require("jshint/src/options");
-
+const assert = require('assert').strict;
 
 const { Data, Delta, State, Step } = require('./types.cjs');
 
 function initialize(parameter, storage) {
     return new Data("pair",
                     [new Data(parameter.prim,
-                              parameter.args || [],
-                              parameter.annots || []
-                             ),
+                              parameter.args || []),
                      new Data(storage.prim,
-                              storage.args || [],
-                              storage.annots || []
-                             )
-                    ],
-                    []);
+                              storage.args || [])]
+                    );
 }
 
 // returns [null or >= 1 strings]
@@ -29,7 +24,7 @@ function getInstructionParameters(requirements, stack) {
         if (reqSize > stack.length) {
             throw ('not enough elements in the stack');
         }
-        const reqElems = stack.slice(0, reqSize);
+        const reqElems = stack.slice(-reqSize).reverse();
         for (let i = 0; i < requirements[1].length; i++) {
             if (reqElems.slice(0, requirements[1][i].length).map(x => x.prim).every((e, index) => e === requirements[1][i][index])) {
                 return reqElems.slice(0, requirements[1][i].length);
@@ -42,7 +37,7 @@ function getInstructionParameters(requirements, stack) {
         if (reqSize > stack.length) {
             throw ('not enough elements in the stack');
         }
-        const reqElems = stack.slice(0, reqSize);
+        const reqElems = stack.slice(-reqSize).reverse();
         if (!requirements[1].every((x, i) => x == reqElems[i].prim)) {
             throw ('stack elements and opcode req does not match');
         }
@@ -256,22 +251,27 @@ function getInstructionRequirements(instruction) {
 
 function processInstruction(instruction, stack, steps, states) {
     const parameters = getInstructionParameters(getInstructionRequirements(instruction.prim), stack);
+    if (parameters.length != 1 || parameters[0] != null) {
+        assert.deepEqual(stack.splice(-parameters.length).reverse(), parameters);
+    }
     // We get the required elements of the stack with this.
 
     // We need to do the actual operation here. But how?
-    const result = global["apply" + instruction.prim].call(null, parameters, stack);
+    const result = global["apply" + instruction.prim].call(null, instruction, parameters, stack);
 
     // We need to add whatever we removed or added from the stack into a Step and add it to steps.
+    stack.push(result);
 
     // We need to update our state(s)?
 }
 
-
-
 // instruction functions start
-function applyABS(parameter, stack) {
-
-}
+global.applyABS = (instruction, parameters, stack) => {
+    return new Data("nat", [Math.abs(parseInt(parameters[0].value[0])).toString()]);
+};
+global.applyPUSH = (instruction, parameters, stack) => {
+    return new Data(instruction.args[0].prim, [instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes]);
+};
 // instruction functions end
 
 exports.initialize = initialize;
