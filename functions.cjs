@@ -269,10 +269,73 @@ function processInstruction(instruction, stack, steps, states) {
 global.applyABS = (instruction, parameters, stack) => {
     return new Data("nat", [Math.abs(parseInt(parameters[0].value[0])).toString()]);
 };
+global.applyADD = (instruction, parameters, stack) => {
+    switch (parameters[0].prim) {
+        case "nat":
+            return new Data(parameters[1].prim == "nat" ? "nat" : "int", [
+                                (parseInt(parameters[0].value[0]) + 
+                                parseInt(parameters[1].value[0])).toString()
+                            ]);
+        case "int":
+            // Case when timestamp is a string hasn't been implemented
+            return new Data(parameters[1].prim == "timestamp" ? "timestamp" : "int", [
+                                (parseInt(parameters[0].value[0]) + 
+                                 parseInt(parameters[1].value[0])).toString()
+                            ]);
+        case "timestamp":
+            // Case when timestamp is a string hasn't been implemented
+            return new Data("timestamp", [
+                                (parseInt(parameters[0].value[0]) + 
+                                 parseInt(parameters[1].value[0])).toString()
+                            ]);
+        case "mutez":
+            return new Data("mutez", [
+                                (parseInt(parameters[0].value[0]) + 
+                                 parseInt(parameters[1].value[0])).toString()
+                            ]);
+        case "bls12_381_g1":
+        case "bls12_381_g2":
+        case "bls12_381_fr":
+            // not implemented
+            break;
+    }
+};
+global.applyADDRESS = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("address", [
+                        "some_address_value"
+                    ]);
+};
+global.applyAMOUNT = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("mutez", [ "0" ]);
+};
+global.applyAND = (instruction, parameters, stack) => {
+    switch (parameters[0].prim) {
+        case "bool":
+            const v = (JSON.parse(parameters[0].value[0].toLowerCase()) &&
+                       JSON.parse(parameters[1].value[0].toLowerCase())).toString();
+            return new Data("bool", [v[0].toUpperCase() + v.slice(1)]);
+        case "nat":
+        case "int":
+            return new Data("nat", [(parseInt(parameters[0].value[0]) & parseInt(parameters[1].value[0])).toString()]);        
+    }
+};
 global.applyPUSH = (instruction, parameters, stack) => {
-    return new Data(instruction.args[0].prim, [instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes]);
+    return new Data(instruction.args[0].prim, [
+                                                instruction.args[1].int ||
+                                                instruction.args[1].string ||
+                                                instruction.args[1].bytes ||
+                                                instruction.args[1].prim
+                                              ]
+                    );
 };
 // instruction functions end
 
+// boilerplate instruction function start
+global.apply = (instruction, parameters, stack) => {
+
+};
+// boilerplate instruction function end
 exports.initialize = initialize;
 exports.processInstruction = processInstruction;
