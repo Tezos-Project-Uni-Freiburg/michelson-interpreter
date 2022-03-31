@@ -265,6 +265,7 @@ function processInstruction(instruction, stack, steps, states) {
     // We need to update our state(s)?
 }
 
+
 // instruction functions start
 global.applyABS = (instruction, parameters, stack) => {
     return new Data("nat", [Math.abs(parseInt(parameters[0].value[0])).toString()]);
@@ -308,7 +309,7 @@ global.applyADDRESS = (instruction, parameters, stack) => {
 };
 global.applyAMOUNT = (instruction, parameters, stack) => {
     // Not implemented
-    return new Data("mutez", [ "0" ]);
+    return new Data("mutez", ["0"]);
 };
 global.applyAND = (instruction, parameters, stack) => {
     switch (parameters[0].prim) {
@@ -329,6 +330,57 @@ global.applyPUSH = (instruction, parameters, stack) => {
                                                 instruction.args[1].prim
                                               ]
                     );
+};
+global.applyAPPLY = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("lambda", [""]);
+};
+global.applyBALANCE = (instruction, parameters, stack) => {
+    // Not implemented, should be taken from state?
+    return new Data("mutez", ["0"]);
+};
+global.applyBLAKE2B = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("bytes", ["0x"]);
+};
+global.applyCAR = (instruction, parameters, stack) => {
+    return parameters[0].value[0];
+};
+global.applyCDR = (instruction, parameters, stack) => {
+    return parameters[0].value[1];
+};
+global.applyCHAIN_ID = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("chain_id", [""]);
+};
+global.applyCHECK_SIGNATURE = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("bool", ["False"]);
+};
+global.applyCOMPARE = (instruction, parameters, stack) => {
+    // Not implemented for the moment
+    return new Data("int", ["0"]);
+};
+global.applyCONCAT = (instruction, parameters, stack) => {
+    if (parameters[0].prim != "list") {
+        return new Data(parameters[0].prim == "string" ? "string" : "bytes", [
+                            parameters[0].value[0] + parameters[1].value[0]
+                        ]);
+    } else {
+        // Not implemented
+    }
+};
+global.applyCONS = (instruction, parameters, stack) => {
+    // Not implemented for the moment
+    return new Data("list", []);
+};
+global.applyCONTRACT = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("option", []);
+};
+global.applyCREATE_CONTRACT = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("pair", []);
 };
 // instruction functions end
 
