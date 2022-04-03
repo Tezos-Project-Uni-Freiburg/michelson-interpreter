@@ -247,7 +247,7 @@ function getInstructionRequirements(instruction) {
     return requirements;
 }
 
-function processInstruction(instruction, stack, steps, states) {
+function processInstruction(instruction, stack) {
     const parameters = getInstructionParameters(getInstructionRequirements(instruction.prim), stack);
     if (parameters.length != 1 || parameters[0] != null) {
         assert.deepEqual(stack.splice(-parameters.length).reverse(), parameters);
@@ -392,16 +392,13 @@ global.applyDIG = (instruction, parameters, stack) => {
     return null;
 };
 global.applyDIP = (instruction, parameters, stack) => {
-    // In progress
-    console.dir(instruction, { depth: null });
-    console.dir(parameters, { depth: null });
-
-    if (instruction.args.length > 1) {
-        
-    } else {
-
+    const n = instruction.args.length > 1 ? parseInt(instruction.args[0].int) : 1;
+    if (n + 1 > stack.length) {
+        throw('not enough elements in stack');
     }
-
+    const p = stack.splice(stack.length - n);
+    processInstruction(instruction.args[1][0], stack);
+    p.forEach(e => stack.push(e));
 };
 // instruction functions end
 

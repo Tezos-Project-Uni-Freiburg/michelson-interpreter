@@ -38,7 +38,7 @@ function main(state, script) {
 
     // start iterating
     for (const i of instructions) {
-        processInstruction(i, stack, steps, states);
+        processInstruction(i, stack);
     }
 
     // examine parameter
