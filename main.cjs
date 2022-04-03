@@ -7,7 +7,7 @@ const fs = require("fs");
 
 const { Data, Delta, State, Step } = require('./types.cjs');
 const { initialize, processInstruction } = require("./functions.cjs");
-const Grammar = require("./grammar.cjs");
+const Grammar = require("./michelson-parser/grammar.js");
 
 const parser = new nearley.Parser(nearley.Grammar.fromCompiled(Grammar));
 

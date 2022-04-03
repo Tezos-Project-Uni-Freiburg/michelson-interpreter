@@ -1,0 +1,3 @@
+[submodule "michelson-parser"]
+	path = michelson-parser
+	url = https://github.com/berkaycagir/michelson-parser
