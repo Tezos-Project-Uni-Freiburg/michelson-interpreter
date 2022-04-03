@@ -1,5 +1,5 @@
 'use strict';
-/* jshint esversion: 6 */
+/* jshint esversion: 11 */
 /* jshint node: true */
 
 // const { v4: uuidv4 } = require('uuid');

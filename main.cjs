@@ -1,5 +1,5 @@
 'use strict';
-/* jshint esversion: 6 */
+/* jshint esversion: 11 */
 /* jshint node: true */
 
 const nearley = require("nearley");
@@ -42,7 +42,7 @@ function main(state, script) {
     }
 
     // examine parameter
-    console.dir(stack, { depth: null });
+    console.dir(stack.reverse(), { depth: null });
 }
 
 // test run:

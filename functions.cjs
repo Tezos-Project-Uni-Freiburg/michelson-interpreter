@@ -1,9 +1,8 @@
 'use strict';
-/* jshint esversion: 6 */
+/* jshint esversion: 11 */
 /* jshint node: true */
 // const { unstable } = require("jshint/src/options");
 const assert = require('assert').strict;
-
 const { Data, Delta, State, Step } = require('./types.cjs');
 
 function initialize(parameter, storage) {
@@ -44,7 +43,6 @@ function getInstructionParameters(requirements, stack) {
         return reqElems;
     }
 }
-
 // returns [true/false, [>= 1 strings]... if true else >= 1 strings]
 function getInstructionRequirements(instruction) {
     const requirements = [];
@@ -260,7 +258,9 @@ function processInstruction(instruction, stack, steps, states) {
     const result = global["apply" + instruction.prim].call(null, instruction, parameters, stack);
 
     // We need to add whatever we removed or added from the stack into a Step and add it to steps.
-    stack.push(result);
+    if (result != null) {
+        stack.push(result);
+    }
 
     // We need to update our state(s)?
 }
@@ -382,12 +382,47 @@ global.applyCREATE_CONTRACT = (instruction, parameters, stack) => {
     // Not implemented
     return new Data("pair", []);
 };
+global.applyDIG = (instruction, parameters, stack) => {
+    if (instruction.args[0].int != 0) {
+        if (instruction.args[0].int > stack.length - 1) {
+            throw('not enough elements in the stack');
+        }
+        arrayMoveMutable(stack, stack.length - 1 - instruction.args[0].int, stack.length - 1);
+    }
+    return null;
+};
+global.applyDIP = (instruction, parameters, stack) => {
+    // In progress
+    console.dir(instruction, { depth: null });
+    console.dir(parameters, { depth: null });
+
+    if (instruction.args.length > 1) {
+        
+    } else {
+
+    }
+
+};
 // instruction functions end
 
 // boilerplate instruction function start
 global.apply = (instruction, parameters, stack) => {
-
+    console.dir(instruction, { depth: null });
+    console.dir(parameters, { depth: null });
 };
 // boilerplate instruction function end
+
+// from https://github.com/sindresorhus/array-move, because somehow I couldn't import it
+function arrayMoveMutable(array, fromIndex, toIndex) {
+	const startIndex = fromIndex < 0 ? array.length + fromIndex : fromIndex;
+
+	if (startIndex >= 0 && startIndex < array.length) {
+		const endIndex = toIndex < 0 ? array.length + toIndex : toIndex;
+
+		const [item] = array.splice(fromIndex, 1);
+		array.splice(endIndex, 0, item);
+	}
+}
+//
 exports.initialize = initialize;
 exports.processInstruction = processInstruction;

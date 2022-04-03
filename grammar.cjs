@@ -1,7 +1,7 @@
 // Generated automatically by nearley, version 2.20.1
 // http://github.com/Hardmath123/nearley
 /* jshint node: true */
-/* jshint esversion: 6 */
+/* jshint esversion: 11 */
 /* jshint laxcomma: true */
 (function () {
 function id(x) { return x[0]; }
