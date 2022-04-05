@@ -400,6 +400,28 @@ global.applyDIP = (instruction, parameters, stack) => {
     processInstruction(instruction.args[1][0], stack);
     p.forEach(e => stack.push(e));
 };
+global.applyDROP = (instruction, parameters, stack) => {
+    const n = instruction.hasOwnProperty('args') ? parseInt(instruction.args[0].int) : 1;
+    if (n > stack.length) {
+        throw('not enough elements in stack');
+    }
+    if (n != 0) {
+        stack.splice(stack.length - n);
+    } 
+    return null;
+};
+global.applyDUG = (instruction, parameters, stack) => {
+    const n = parseInt(instruction.args[0].int);
+    if (n == 0) {
+        return null;
+    }
+    if (n >= stack.length) {
+        throw('not enough elements in stack');
+    }
+    stack.splice(stack.length - 1 - n, 0, stack[stack.length - 1]);
+    stack.pop();
+    return null;
+};
 // instruction functions end
 
 // boilerplate instruction function start
