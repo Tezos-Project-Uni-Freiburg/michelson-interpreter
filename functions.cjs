@@ -3,6 +3,7 @@
 /* jshint node: true */
 // const { unstable } = require("jshint/src/options");
 const assert = require('assert').strict;
+const { serialize, deserialize } = require('@ungap/structured-clone');
 const { Data, Delta, State, Step } = require('./types.cjs');
 
 function initialize(parameter, storage) {
@@ -421,6 +422,68 @@ global.applyDUG = (instruction, parameters, stack) => {
     stack.splice(stack.length - 1 - n, 0, stack[stack.length - 1]);
     stack.pop();
     return null;
+};
+global.applyDUP = (instruction, parameters, stack) => {
+    // Working for now but doesn't deep clone as Data
+    const n = instruction.hasOwnProperty('args') ? parseInt(instruction.args[0].int) : 1;
+    if (n === 0) {
+        throw("non-allowed value for " + instruction.prim + ": " + instruction.args);
+    }
+    if (n > stack.length) {
+        throw("not enough elements in the stack");
+    }
+    return deserialize(serialize(stack[stack.length - n]));
+};
+global.applyEDIV = (instruction, parameters, stack) => {
+    const result = new Data("option", []);
+    const z1 = parseInt(parameters[0].value[0]);
+    const z2 = parseInt(parameters[1].value[0]);
+
+    if (z2 === 0) {
+        result.value.push("None");
+        return result;
+    } else {
+        result.value.push("Some");
+    }
+
+    const q = Math.trunc(z1/z2);
+    const r = z1 % z2;
+    var t1 = "";
+    var t2 = "";
+
+    switch (parameters[0].prim) {
+        case "nat":
+            if (parameters[1].prim === "nat") {
+                t1 = "nat";
+                t2 = "nat";
+            } else {
+                t1 = "int";
+                t2 = "nat";
+            }
+            break;
+        case "int":
+            t1 = "int";
+            t2 = "nat";
+            break;
+        case "mutez":
+            if (parameters[1].prim === "nat") {
+                t1 = "mutez";
+            } else {
+                t1 = "nat";
+            }
+            t2 = "mutez";
+            break;
+    }
+    result.value.push(new Data("pair", [new Data(t1, [q.toString()]), new Data(t2, [r.toString()])]));
+    return result;
+};
+global.applyEMPTY_BIG_MAP = (instruction, parameters, stack) => {
+    if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
+        throw("kty is not comparable");
+    } else if (["operation", "big_map"].includes(instruction.args[0].prim)) {
+        throw("vty is " + instruction.args[0].prim);
+    }
+    return new Data("big_map", [instruction.args[0].prim, instruction.args[1].prim]);
 };
 // instruction functions end
 
