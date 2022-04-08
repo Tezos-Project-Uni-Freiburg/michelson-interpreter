@@ -5,6 +5,7 @@
 const assert = require('assert').strict;
 const { serialize, deserialize } = require('@ungap/structured-clone');
 const { Data, Delta, State, Step } = require('./types.cjs');
+const base58check = require('base58check');
 
 function initialize(parameter, storage) {
     return new Data("pair",
@@ -83,6 +84,7 @@ function getInstructionRequirements(instruction) {
         case 'EMPTY_BIG_MAP':
         case 'EMPTY_MAP':
         case 'EMPTY_SET':
+        case 'FAILWITH': // TODO: actually FAILWITH takes any type that's packable, need to figure out
         case 'LAMBDA':
         case 'LEFT':
         case 'LEVEL':
@@ -127,10 +129,6 @@ function getInstructionRequirements(instruction) {
         case 'EXEC':
             // TODO: how to determine ty1 and lambda's type match?
             requirements.push(false, ['', 'lambda']);
-            break;
-        case 'FAILWITH':
-            // TODO: actually FAILWITH takes any type that's packable, need to figure out
-            requirements.push(false, ['unit']);
             break;
         case 'GET':
             requirements.push(true, [['', 'map'], ['', 'big_map']]);
@@ -480,10 +478,114 @@ global.applyEDIV = (instruction, parameters, stack) => {
 global.applyEMPTY_BIG_MAP = (instruction, parameters, stack) => {
     if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
         throw("kty is not comparable");
-    } else if (["operation", "big_map"].includes(instruction.args[0].prim)) {
-        throw("vty is " + instruction.args[0].prim);
+    } else if (["operation", "big_map"].includes(instruction.args[1].prim)) {
+        throw("vty is " + instruction.args[1].prim);
     }
     return new Data("big_map", [instruction.args[0].prim, instruction.args[1].prim]);
+};
+global.applyEMPTY_MAP = (instruction, parameters, stack) => {
+    if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
+        throw("kty is not comparable");
+    }
+    return new Data("map", [instruction.args[0].prim, instruction.args[1].prim]);
+};
+global.applyEMPTY_SET = (instruction, parameters, stack) => {
+    if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
+        throw("kty is not comparable");
+    }
+    return new Data("set", [instruction.args[0].prim]);
+};
+global.applyEQ = (instruction, parameters, stack) => {
+    const result = new Data("bool", []);
+    if (parseInt(parameters[0].value[0]) === 0) {
+        result.value.push("True");
+    } else {
+        result.value.push("False");
+    }
+    return result;
+};
+global.applyEXEC = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("unit", []);
+};
+global.applyFAILWITH = (instruction, parameters, stack) => {
+    if (!stack[stack.length - 1].attributes.includes("PA")) {
+        throw("FAILWITH got non-packable top element");
+    } else {
+        throw("got FAILWITH, top element of the stack: " + stack[stack.length - 1].value);
+    }
+};
+global.applyGE = (instruction, parameters, stack) => {
+    const result = new Data("bool", []);
+    if (parseInt(parameters[0].value[0]) >= 0) {
+        result.value.push("True");
+    } else {
+        result.value.push("False");
+    }
+    return result;
+};
+global.applyGET = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("option", []);
+};
+global.applyGET_AND_UPDATE = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("option", []);
+};
+global.applyGT = (instruction, parameters, stack) => {
+    const result = new Data("bool", []);
+    if (parseInt(parameters[0].value[0]) > 0) {
+        result.value.push("True");
+    } else {
+        result.value.push("False");
+    }
+    return result;
+};
+global.applyHASH_KEY = (instruction, parameters, stack) => {
+    return new Data("key_hash", [base58check.encode(parameters[0].value[0])]);
+};
+global.applyIF = (instruction, parameters, stack) => {
+    const v = JSON.parse(parameters[0].value[0].toLowerCase());
+    if (v) {
+        for (const i of instruction.args[0]) {
+            processInstruction(i, stack);
+        }
+    } else {
+        for (const i of instruction.args[1]) {
+            processInstruction(i, stack);
+        }
+    }
+    return null;
+};
+global.applyIF_CONS = (instruction, parameters, stack) => {
+    // Not implemented yet
+    return null;
+};
+global.applyIF_LEFT = (instruction, parameters, stack) => {
+    // Not implemented yet
+    return null;
+};
+global.applyIF_NONE = (instruction, parameters, stack) => {
+    // Not implemented yet
+    return null;
+};
+global.applyIMPLICIT_ACCOUNT = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("contract", [new Data("unit", [])]);
+};
+global.applyINT = (instruction, parameters, stack) => {
+    // Not implemented for bls12_381_fr
+    return new Data("int", [parameters[0].prim === "bls12_381_fr" ? 0 : parameters[0].value[0]]);
+};
+global.applyISNAT = (instruction, parameters, stack) => {
+    const result = new Data("option", []);
+    const v = parseInt(parameters[0].value[0]);
+    if (v < 0) {
+        result.value.push("None");
+    } else {
+        result.value.push("Some", new Data("nat", [parameters[0].value[0]]));
+    }
+    return result;
 };
 // instruction functions end
 
