@@ -6,6 +6,7 @@ const assert = require('assert').strict;
 const { serialize, deserialize } = require('@ungap/structured-clone');
 const { Data, Delta, State, Step } = require('./types.cjs');
 const base58check = require('base58check');
+const keccak256 = require('keccak256');
 
 function initialize(parameter, storage) {
     return new Data("pair",
@@ -586,6 +587,19 @@ global.applyISNAT = (instruction, parameters, stack) => {
         result.value.push("Some", new Data("nat", [parameters[0].value[0]]));
     }
     return result;
+};
+global.applyITER = (instruction, parameters, stack) => {
+    // Not implemented
+    return null;
+};
+global.applyJOIN_TICKETS = (instruction, parameters, stack) => {
+    // Not implemented
+    return null;
+};
+global.applyKECCAK = (instruction, parameters, stack) => {
+    console.dir(instruction, { depth: null });
+    console.dir(parameters, { depth: null });
+    return new Data("bytes", [keccak256(parameters[0].value[0]).toString('hex')]);
 };
 // instruction functions end
 
