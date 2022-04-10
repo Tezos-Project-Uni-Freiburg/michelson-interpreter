@@ -597,9 +597,32 @@ global.applyJOIN_TICKETS = (instruction, parameters, stack) => {
     return null;
 };
 global.applyKECCAK = (instruction, parameters, stack) => {
-    console.dir(instruction, { depth: null });
-    console.dir(parameters, { depth: null });
-    return new Data("bytes", [keccak256(parameters[0].value[0]).toString('hex')]);
+    return new Data("bytes", [keccak256("0x" + parameters[0].value[0]).toString('hex')]);
+};
+global.applyLAMBDA = (instruction, parameters, stack) => {
+    return null;
+};
+global.applyLE = (instruction, parameters, stack) => {
+    const result = new Data("bool", []);
+    if (parseInt(parameters[0].value[0]) <= 0) {
+        result.value.push("True");
+    } else {
+        result.value.push("False");
+    }
+    return result;
+};
+global.applyLEFT = (instruction, parameters, stack) => {
+    if (stack.length < 1) {
+        throw('not enough elements in stack');
+    } else if (instruction.args[0].prim !== stack[stack.length - 1].prim) {
+        throw("given type and stack elements type doesn't match");
+    } else {
+        return new Data("or", ["Left", stack.pop()]);
+    }
+};
+global.applyLEVEL = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('nat', ['0']);
 };
 // instruction functions end
 
