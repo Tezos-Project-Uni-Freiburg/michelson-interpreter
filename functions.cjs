@@ -19,6 +19,7 @@ function initialize(parameter, storage) {
 
 // returns [null or >= 1 strings]
 function getInstructionParameters(requirements, stack) {
+    let flag = false;
     if (requirements[0]) {
         const reqSize = requirements[1].reduce((previousValue, currentValue) =>
                                        previousValue > currentValue.length ? previousValue
@@ -29,8 +30,12 @@ function getInstructionParameters(requirements, stack) {
         const reqElems = stack.slice(-reqSize).reverse();
         for (let i = 0; i < requirements[1].length; i++) {
             if (reqElems.slice(0, requirements[1][i].length).map(x => x.prim).every((e, index) => e === requirements[1][i][index])) {
+                flag = true;
                 return reqElems.slice(0, requirements[1][i].length);
             }
+        }
+        if (!flag) {
+            throw ('stack elements and opcode req does not match');
         }
     } else if (requirements.length == 2 && requirements[1][0] === null) {
         return [null];
@@ -600,6 +605,7 @@ global.applyKECCAK = (instruction, parameters, stack) => {
     return new Data("bytes", [keccak256("0x" + parameters[0].value[0]).toString('hex')]);
 };
 global.applyLAMBDA = (instruction, parameters, stack) => {
+    // Not implemented
     return null;
 };
 global.applyLE = (instruction, parameters, stack) => {
@@ -623,6 +629,120 @@ global.applyLEFT = (instruction, parameters, stack) => {
 global.applyLEVEL = (instruction, parameters, stack) => {
     // Not implemented
     return new Data('nat', ['0']);
+};
+global.applyLOOP = (instruction, parameters, stack) => {
+    // Not implemented yet
+    return null;
+};
+global.applyLOOP_LEFT = (instruction, parameters, stack) => {
+    // Not implemented yet
+    return null;
+};
+global.applyLSL = (instruction, parameters, stack) => {
+    const f = parseInt(parameters[0].value[0]);
+    const s = parseInt(parameters[1].value[0]);
+    if (s > 256) {
+        throw('s is larger than 256');
+    }
+    return new Data("nat", [(f << s).toString()]);
+};
+global.applyLSR = (instruction, parameters, stack) => {
+    const f = parseInt(parameters[0].value[0]);
+    const s = parseInt(parameters[1].value[0]);
+    if (s > 256) {
+        throw('s is larger than 256');
+    }
+    return new Data("nat", [(f >> s).toString()]);
+};
+global.applyLT = (instruction, parameters, stack) => {
+    const result = new Data("bool", []);
+    if (parseInt(parameters[0].value[0]) < 0) {
+        result.value.push("True");
+    } else {
+        result.value.push("False");
+    }
+    return result;
+};
+global.applyMAP = (instruction, parameters, stack) => {
+    // Not implemented yet
+    return null;
+};
+global.applyMEM = (instruction, parameters, stack) => {
+    // Not implemented yet
+    return null;
+};
+global.applyMUL = (instruction, parameters, stack) => {
+    const z1 = parseInt(parameters[0].value[0]);
+    const z2 = parseInt(parameters[1].value[0]);
+    var t = "";
+
+    switch (parameters[0].prim) {
+        case "nat":
+            if (["nat", "int", "mutez"].includes(parameters[1].prim)) {
+                t = parameters[1].prim;
+            } else {
+                throw('MUL not implemented for BLS12_381 variables');
+            }
+            break;
+        case "int":
+            t = "int";
+            break;
+        case "mutez":
+            t = "mutez";
+            break;
+        default:
+            throw('MUL not implemented for BLS12_381 variables');
+    }
+    return new Data(t, [(z1 * z2).toString()]);
+};
+global.applyNEG = (instruction, parameters, stack) => {
+    if (!["nat", "int"].includes(parameters[0].prim)) {
+        throw('NEG not implemented for BLS12_381 variables');
+    }
+    return new Data("int", [(-parseInt(parameters[0].value[0])).toString()]);
+};
+global.applyNEQ = (instruction, parameters, stack) => {
+    const result = new Data("bool", []);
+    if (parseInt(parameters[0].value[0]) !== 0) {
+        result.value.push("True");
+    } else {
+        result.value.push("False");
+    }
+    return result;
+};
+global.applyNIL = (instruction, parameters, stack) => {
+    if (!instruction.hasOwnProperty('args')) {
+        throw('type of list is not declared');
+    }
+    return new Data('list', [instruction.args[0].prim]);
+};
+global.applyNONE = (instruction, parameters, stack) => {
+    if (!instruction.hasOwnProperty('args')) {
+        throw('type of option is not declared');
+    }
+    return new Data('option', ["None"]);
+};
+global.applyNOT = (instruction, parameters, stack) => {
+    switch(parameters[0].prim) {
+        case 'int':
+        case 'nat':
+            return new Data("int", [(~parseInt(parameters[0].value[0])).toString()]);
+        case 'bool':
+            const v = (!JSON.parse(parameters[0].value[0].toLowerCase())).toString();
+            return new Data("bool", [v[0].toUpperCase() + v.slice(1)]);
+    }
+};
+global.applyNOW = (instruction, parameters, stack) => {
+    return new Data('timestamp', [Date.now().toString()]);
+};
+global.applyOR = (instruction, parameters, stack) => {
+    if (parameters[0].prim === 'bool') {
+        const v = (JSON.parse(parameters[0].value[0].toLowerCase()) ||
+                   JSON.parse(parameters[1].value[0].toLowerCase())).toString();
+            return new Data("bool", [v[0].toUpperCase() + v.slice(1)]);
+    } else {
+        return new Data('nat', [((parseInt(parameters[0].value[0])) | (parseInt(parameters[1].value[0]))).toString()]);
+    }
 };
 // instruction functions end
 
