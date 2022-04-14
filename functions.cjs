@@ -7,6 +7,9 @@ const { serialize, deserialize } = require('@ungap/structured-clone');
 const { Data, Delta, State, Step } = require('./types.cjs');
 const base58check = require('base58check');
 const keccak256 = require('keccak256');
+const sha256 = require('js-sha256').sha256;
+const sha3_256 = require('js-sha3').sha3_256;
+const sha512 = require('js-sha512').sha512;
 
 function initialize(parameter, storage) {
     return new Data("pair",
@@ -45,7 +48,7 @@ function getInstructionParameters(requirements, stack) {
             throw ('not enough elements in the stack');
         }
         const reqElems = stack.slice(-reqSize).reverse();
-        if (!requirements[1].every((x, i) => x == reqElems[i].prim)) {
+        if (requirements[1].every(x => x.length > 0) && !requirements[1].every((x, i) => x == reqElems[i].prim)) {
             throw ('stack elements and opcode req does not match');
         }
         return reqElems;
@@ -92,7 +95,6 @@ function getInstructionRequirements(instruction) {
         case 'EMPTY_SET':
         case 'FAILWITH': // TODO: actually FAILWITH takes any type that's packable, need to figure out
         case 'LAMBDA':
-        case 'LEFT':
         case 'LEVEL':
         case 'NIL':
         case 'NONE':
@@ -202,6 +204,7 @@ function getInstructionRequirements(instruction) {
             requirements.push(true, [['bool', 'bool'], ['nat', 'nat']]);
             break;
         case 'PACK': // TODO: how to determine ty1?
+        case 'LEFT':
         case 'RIGHT':
         case 'SOME':
         case 'SOURCE':
@@ -264,12 +267,17 @@ function processInstruction(instruction, stack) {
 
     // We need to add whatever we removed or added from the stack into a Step and add it to steps.
     if (result != null) {
-        stack.push(result);
+        if (!Array.isArray(result)) {
+            stack.push(result);
+        } else {
+            result.reverse().forEach(e => stack.push(e));
+        }
     }
 
     // We need to update our state(s)?
 }
 
+// ---------------------------
 
 // instruction functions start
 global.applyABS = (instruction, parameters, stack) => {
@@ -326,15 +334,6 @@ global.applyAND = (instruction, parameters, stack) => {
         case "int":
             return new Data("nat", [(parseInt(parameters[0].value[0]) & parseInt(parameters[1].value[0])).toString()]);        
     }
-};
-global.applyPUSH = (instruction, parameters, stack) => {
-    return new Data(instruction.args[0].prim, [
-                                                instruction.args[1].int ||
-                                                instruction.args[1].string ||
-                                                instruction.args[1].bytes ||
-                                                instruction.args[1].prim
-                                              ]
-                    );
 };
 global.applyAPPLY = (instruction, parameters, stack) => {
     // Not implemented
@@ -618,12 +617,10 @@ global.applyLE = (instruction, parameters, stack) => {
     return result;
 };
 global.applyLEFT = (instruction, parameters, stack) => {
-    if (stack.length < 1) {
-        throw('not enough elements in stack');
-    } else if (instruction.args[0].prim !== stack[stack.length - 1].prim) {
+    if (instruction.args[0].prim !== parameters[0].prim) {
         throw("given type and stack elements type doesn't match");
     } else {
-        return new Data("or", ["Left", stack.pop()]);
+        return new Data("or", ["Left", parameters[0]]);
     }
 };
 global.applyLEVEL = (instruction, parameters, stack) => {
@@ -743,6 +740,73 @@ global.applyOR = (instruction, parameters, stack) => {
     } else {
         return new Data('nat', [((parseInt(parameters[0].value[0])) | (parseInt(parameters[1].value[0]))).toString()]);
     }
+};
+global.applyPACK = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('bytes', []);
+};
+global.applyPAIR = (instruction, parameters, stack) => {
+    if (instruction.hasOwnProperty('args')) {
+        throw("PAIR 'n' case hasn't been implemented");
+    }
+    return new Data('pair', [parameters[0], parameters[1]]);
+};
+global.applyPAIRING_CHECK = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('bool', ['False']);
+};
+global.applyPUSH = (instruction, parameters, stack) => {
+    return new Data(instruction.args[0].prim, [
+                                                instruction.args[1].int ||
+                                                instruction.args[1].string ||
+                                                instruction.args[1].bytes ||
+                                                instruction.args[1].prim
+                                              ]
+                    );
+};
+global.applyREAD_TICKET = (instruction, parameters, stack) => {
+    // Not implemented
+    return [new Data('pair', []), new Data('ticket', [])];
+};
+global.applyRIGHT = (instruction, parameters, stack) => {
+    if (instruction.args[0].prim !== parameters[0].prim) {
+        throw("given type and stack elements type doesn't match");
+    } else {
+        return new Data("or", ["Right", parameters[0]]);
+    }
+};
+global.applySAPLING_EMPTY_STATE = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('sapling_state', []);
+};
+global.applySAPLING_VERIFY_UPDATE = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('option', []);
+};
+global.applySELF = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("contract", []);
+};
+global.applySELF_ADDRESS = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("address", []);
+};
+global.applySENDER = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("address", []);
+};
+global.applySET_DELEGATE = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('operation', []);
+};
+global.applySHA256 = (instruction, parameters, stack) => {
+    return new Data("bytes", [sha256(parameters[0].value[0]).toString('hex')]);
+};
+global.applySHA3 = (instruction, parameters, stack) => {
+    return new Data("bytes", [sha3_256(parameters[0].value[0]).toString('hex')]);
+};
+global.applySHA512 = (instruction, parameters, stack) => {
+    return new Data("bytes", [sha512(parameters[0].value[0]).toString('hex')]);
 };
 // instruction functions end
 
