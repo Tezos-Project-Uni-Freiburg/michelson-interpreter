@@ -55,6 +55,9 @@ class Data {
         }
         // this.value = JSON.parse(JSON.stringify(value));
         this.value = value;
+        if (this.value.length == 1 && this.value[0] == undefined) {
+            this.value[0] = '';
+        }
         this.name = name;
         // this.id = uuidv4();
     }

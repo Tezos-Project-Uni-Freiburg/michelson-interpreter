@@ -756,13 +756,8 @@ global.applyPAIRING_CHECK = (instruction, parameters, stack) => {
     return new Data('bool', ['False']);
 };
 global.applyPUSH = (instruction, parameters, stack) => {
-    return new Data(instruction.args[0].prim, [
-                                                instruction.args[1].int ||
-                                                instruction.args[1].string ||
-                                                instruction.args[1].bytes ||
-                                                instruction.args[1].prim
-                                              ]
-                    );
+    const value = instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes || instruction.args[1].prim;
+    return new Data(instruction.args[0].prim, [value]);
 };
 global.applyREAD_TICKET = (instruction, parameters, stack) => {
     // Not implemented
@@ -808,6 +803,39 @@ global.applySHA3 = (instruction, parameters, stack) => {
 global.applySHA512 = (instruction, parameters, stack) => {
     return new Data("bytes", [sha512(parameters[0].value[0]).toString('hex')]);
 };
+global.applySIZE = (instruction, parameters, stack) => {
+    if (['list', 'set', 'map'].includes(parameters[0].prim)) {
+        throw('SIZE not implemented for list, set, map');
+    }
+    return new Data('nat', [parameters[0].value[0].length.toString()]);
+};
+global.applySLICE = (instruction, parameters, stack) => {
+    const offset = parseInt(parameters[0].value[0]);
+    const len = parseInt(parameters[1].value[0]);
+    const str = parameters[2].value[0];
+    if (str.length == 0 || offset >= str.length || offset + len > str.length) {
+        return new Data('option', ["None"]);
+    } else if (offset < str.length && offset + len <= str.length) {
+        return new Data('option', ['Some', new Data('string', [str.slice(offset, offset + len)])]);
+    }
+};
+global.applySOME = (instruction, parameters, stack) => {
+    if (!instruction.hasOwnProperty('args')) {
+        throw('type of option is not declared');
+    } else if (instruction.args[0].prim !== parameters[0].prim) {
+        throw("stack value and option type doesn't match");
+    }
+    return new Data('option', ["Some", parameters[0]]);
+};
+global.applySOURCE = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("address", []);
+};
+global.applySPLIT_TICKET = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('option', ['Some', new Data('pair', [new Data('ticket', []), new Data('ticket', [])])]);
+};
+
 // instruction functions end
 
 // boilerplate instruction function start
