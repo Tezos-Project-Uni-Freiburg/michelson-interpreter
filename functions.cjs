@@ -401,7 +401,7 @@ global.applyDIP = (instruction, parameters, stack) => {
         throw('not enough elements in stack');
     }
     const p = stack.splice(stack.length - n);
-    processInstruction(instruction.args[1][0], stack);
+    processInstruction(instruction.args[0], stack);
     p.forEach(e => stack.push(e));
 };
 global.applyDROP = (instruction, parameters, stack) => {
@@ -835,7 +835,83 @@ global.applySPLIT_TICKET = (instruction, parameters, stack) => {
     // Not implemented
     return new Data('option', ['Some', new Data('pair', [new Data('ticket', []), new Data('ticket', [])])]);
 };
+global.applySUB = (instruction, parameters, stack) => {
+    if ([parameters[0].prim, parameters[1].prim].includes("timestamp") &&
+        (/[a-z]/i.test(parameters[0].value[0]) || /[a-z]/i.test(parameters[1].value[0]))) {
+        throw('SUB not implemented for timestamps in RFC3339 notation');
+    }
 
+    const z1 = parseInt(parameters[0].value[0]);
+    const z2 = parseInt(parameters[1].value[0]);
+    var t = "";
+
+    switch (parameters[0].prim) {
+        case "nat":
+        case "int":
+            t = "int";
+            break;
+        case "timestamp":
+            if (parameters[1].prim === "int") {
+                t = "timestamp";
+            } else {
+                t = "int";
+            }
+            break;
+        case "mutez":
+            t = "mutez";
+            break;
+    }
+    return new Data(t, [(z1 - z2).toString()]);
+};
+global.applySWAP = (instruction, parameters, stack) => {
+    return parameters.reverse();
+};
+global.applyTICKET = (instruction, parameters, stack) => {
+    // Not tested
+    return new Data("ticket", [parameters[0]]);
+};
+global.applyTOTAL_VOTING_POWER = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("nat", ["0"]);
+};
+global.applyTRANSFER_TOKENS = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data("operation", []);
+};
+global.applyUNIT = (instruction, parameters, stack) => {
+    return new Data("unit", ["Unit"]);
+};
+global.applyUNPACK = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('option', ['None']);
+};
+global.applyUNPAIR = (instruction, parameters, stack) => {
+    // Implemented but parser doesn't use it as it's been introduced in Edo
+    if (instruction.hasOwnProperty('args')) {
+        throw("UNPAIR 'n' case hasn't been implemented");
+    }
+    return [parameters[0].value[0], parameters[0].value[1]];
+};
+global.applyUPDATE = (instruction, parameters, stack) => {
+    // Not implemented yet
+    if (instruction.hasOwnProperty('args')) {
+        throw("UPDATE 'n' case hasn't been implemented");
+    }
+    return parameters[2];
+};
+global.applyVOTING_POWER = (instruction, parameters, stack) => {
+    // Not implemented
+    return new Data('nat', ['0']);
+};
+global.applyXOR = (instruction, parameters, stack) => {
+    if (parameters[0].prim === 'bool') {
+        const v = (JSON.parse(parameters[0].value[0].toLowerCase()) !=
+                   JSON.parse(parameters[1].value[0].toLowerCase())).toString();
+        return new Data("bool", [v[0].toUpperCase() + v.slice(1)]);
+    } else {
+        return new Data('nat', [(parseInt(parameters[0].value[0]) ^ parseInt(parameters[1].value[0])).toString()]);
+    }
+};
 // instruction functions end
 
 // boilerplate instruction function start
