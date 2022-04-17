@@ -48,7 +48,13 @@ function getInstructionParameters(requirements, stack) {
             throw ('not enough elements in the stack');
         }
         const reqElems = stack.slice(-reqSize).reverse();
-        if (requirements[1].every(x => x.length > 0) && !requirements[1].every((x, i) => x == reqElems[i].prim)) {
+        if (requirements[1].every(e => e === "SAME")) {
+            const types = new Set();
+            reqElems.forEach(e => types.add(e.prim));
+            if (types.size != 1) {
+                throw('top elements are not of same type');
+            }
+        } else if (requirements[1].every(x => x.length > 0) && !requirements[1].every((x, i) => x == reqElems[i].prim)) {
             throw ('stack elements and opcode req does not match');
         }
         return reqElems;
@@ -81,7 +87,6 @@ function getInstructionRequirements(instruction) {
         case 'APPLY': // TODO: how to figure out ty1, ty2 and ty3?
         case 'BALANCE':
         case 'CHAIN_ID':
-        case 'COMPARE': // TODO: how to figure out that both types are comparable?
         case 'CONS': // TODO: how to figure out that the ty1 and type of list is the same?
         case 'CONTRACT': // TODO: how to figure out the type of contract & address?
         case 'CREATE_CONTRACT': // TODO
@@ -210,6 +215,9 @@ function getInstructionRequirements(instruction) {
         case 'SOURCE':
             requirements.push(false, ['']);
             break;
+        case 'COMPARE':
+            requirements.push(false, ['SAME', 'SAME']);
+            break;
         case 'PAIR': // TODO: how to determine ty1 & ty2? && there's a PAIR n version now that's not represented here
         case 'SWAP':
         case 'UNPAIR': // TODO: how to implement UNPAIR n version?
@@ -321,8 +329,7 @@ global.applyADDRESS = (instruction, parameters, stack) => {
                     ]);
 };
 global.applyAMOUNT = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("mutez", ["0"]);
+    return new Data("mutez", [global.currentState.amount.toString()]);
 };
 global.applyAND = (instruction, parameters, stack) => {
     switch (parameters[0].prim) {
@@ -362,8 +369,30 @@ global.applyCHECK_SIGNATURE = (instruction, parameters, stack) => {
     return new Data("bool", ["False"]);
 };
 global.applyCOMPARE = (instruction, parameters, stack) => {
-    // Not implemented for the moment
-    return new Data("int", ["0"]);
+    // console.dir(instruction, { depth: null });
+    // console.dir(parameters, { depth: null });
+    if (!parameters[0].attributes.includes("C") || !parameters[1].attributes.includes("C")) {
+        throw("can't compare non-Comparable types");
+    }
+    switch (parameters[0].prim) {
+        case "nat":
+        case "int":
+        case "mutez":
+        case "timestamp":
+            const r = new Data("int", []);
+            const z1 = parseInt(parameters[0].value[0]);
+            const z2 = parseInt(parameters[1].value[0]);
+            if (z1 < z2) {
+                r.value.push("-1");
+            } else if (z1 > z2) {
+                r.value.push("1");
+            } else {
+                r.value.push("0");
+            }
+            return r;
+        default:
+            throw("COMPARE not implemented for non-numerical types");
+    }
 };
 global.applyCONCAT = (instruction, parameters, stack) => {
     if (parameters[0].prim != "list") {
