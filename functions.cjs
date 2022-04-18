@@ -276,9 +276,19 @@ function processInstruction(instruction, stack) {
     // We need to add whatever we removed or added from the stack into a Step and add it to steps.
     if (result != null) {
         if (!Array.isArray(result)) {
+            if (result.hasOwnProperty('args') && !result.hasOwnProperty('value')) {
+                Object.defineProperty(result, "value", Object.getOwnPropertyDescriptor(result, "args"));
+                delete result.args;
+            }
             stack.push(result);
         } else {
-            result.reverse().forEach(e => stack.push(e));
+            for (const i of result.reverse()) {
+                if (i.hasOwnProperty('args') && !i.hasOwnProperty('value')) {
+                    Object.defineProperty(i, "value", Object.getOwnPropertyDescriptor(i, "args"));
+                    delete i.args;
+                }
+                stack.push(i);
+            }
         }
     }
 
@@ -581,11 +591,11 @@ global.applyHASH_KEY = (instruction, parameters, stack) => {
 global.applyIF = (instruction, parameters, stack) => {
     const v = JSON.parse(parameters[0].value[0].toLowerCase());
     if (v) {
-        for (const i of instruction.args[0]) {
+        for (const i of instruction.args[0].flat()) {
             processInstruction(i, stack);
         }
     } else {
-        for (const i of instruction.args[1]) {
+        for (const i of instruction.args[1].flat()) {
             processInstruction(i, stack);
         }
     }
@@ -893,7 +903,7 @@ global.applySUB = (instruction, parameters, stack) => {
     return new Data(t, [(z1 - z2).toString()]);
 };
 global.applySWAP = (instruction, parameters, stack) => {
-    return parameters.reverse();
+    return deserialize(serialize(parameters)).reverse();
 };
 global.applyTICKET = (instruction, parameters, stack) => {
     // Not tested
