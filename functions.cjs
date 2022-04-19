@@ -6,9 +6,7 @@ const assert = require('assert').strict;
 const { serialize, deserialize } = require('@ungap/structured-clone');
 const { Data, Delta, State, Step } = require('./types.cjs');
 const base58check = require('base58check');
-const keccak256 = require('keccak256');
 const sha256 = require('js-sha256').sha256;
-const sha3_256 = require('js-sha3').sha3_256;
 const sha512 = require('js-sha512').sha512;
 
 function initialize(parameter, storage) {
@@ -77,8 +75,7 @@ function getInstructionRequirements(instruction) {
         case 'ADD':
             requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['timestamp', 'int'], ['int', 'timestamp'],
-                              ['mutez', 'mutez'], ['bls12_381_g1', 'bls12_381_g1'],
-                              ['bls12_381_g2', 'bls12_381_g2'], ['bls12_381_fr', 'bls12_381_fr']]);
+                              ['mutez', 'mutez']]);
             break;
         case 'ADDRESS':
             requirements.push(false, ['contract']);
@@ -100,16 +97,12 @@ function getInstructionRequirements(instruction) {
         case 'EMPTY_SET':
         case 'FAILWITH': // TODO: actually FAILWITH takes any type that's packable, need to figure out
         case 'LAMBDA':
-        case 'LEVEL':
         case 'NIL':
         case 'NONE':
         case 'NOW':
         case 'PUSH':
-        case 'SAPLING_EMPTY_STATE':
         case 'SELF':
-        case 'SELF_ADDRESS':
         case 'SENDER':
-        case 'TOTAL_VOTING_POWER':
         case 'UNIT':
             requirements.push(false, [null]);
             break;
@@ -117,15 +110,12 @@ function getInstructionRequirements(instruction) {
             requirements.push(true, [['bool', 'bool'], ['nat', 'nat'], ['int', 'nat']]);
             break;
         case 'BLAKE2B':
-        case 'KECCAK':
         case 'SHA256':
-        case 'SHA3':
         case 'SHA512':
             requirements.push(false, ['bytes']);
             break;
         case 'CAR':
         case 'CDR':
-        case 'JOIN_TICKETS':
             requirements.push(false, ['pair']);
             break;
         case 'CHECK_SIGNATURE':
@@ -146,9 +136,6 @@ function getInstructionRequirements(instruction) {
         case 'GET':
             requirements.push(true, [['', 'map'], ['', 'big_map']]);
             break;
-        case 'GET_AND_UPDATE':
-            requirements.push(true, [['', 'option', 'map'], ['', 'option', 'big_map']]);
-            break;
         case 'HASH_KEY':
             requirements.push(false, ['key']);
             break;
@@ -157,7 +144,6 @@ function getInstructionRequirements(instruction) {
             requirements.push(false, ['bool']);
             break;
         case 'IF_CONS':
-        case 'PAIRING_CHECK':
             requirements.push(false, ['list']);
             break;
         case 'IF_LEFT':
@@ -169,11 +155,10 @@ function getInstructionRequirements(instruction) {
             requirements.push(false, ['option']);
             break;
         case 'IMPLICIT_ACCOUNT':
-        case 'VOTING_POWER':
             requirements.push(false, ['key_hash']);
             break;
         case 'INT':
-            requirements.push(true, [['nat'], ['bls12_381_fr']]);
+            requirements.push(true, [['nat']]);
             break;
         case 'ITER':
             requirements.push(true, [['list'], ['set'], ['map']]);
@@ -190,16 +175,10 @@ function getInstructionRequirements(instruction) {
             break;
         case 'MUL':
             requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
-                              ['int', 'int'], ['mutez', 'nat'], ['nat', 'mutez'],
-                              ['bls12_381_g1', 'bls12_381_fr'], ['bls12_381_g2', 'bls12_381_fr'],
-                              ['bls12_381_fr', 'bls12_381_fr'], ['nat', 'bls12_381_fr'],
-                              ['int', 'bls12_381_fr'], ['bls12_381_fr', 'nat'], ['bls12_381_fr', 'int']]);
+                              ['int', 'int'], ['mutez', 'nat'], ['nat', 'mutez'],]);
             break;
         case 'NEG':
-            requirements.push(true, [['nat'], ['int'], ['bls12_381_g1'], ['bls12_381_g2'], ['bls12_381_fr']]);
-            break;
-        case 'NEVER':
-            requirements.push(false, ['never']);
+            requirements.push(true, [['nat'], ['int']]);
             break;
         case 'NOT':
             requirements.push(true, [['bool'], ['nat'], ['int']]);
@@ -220,14 +199,7 @@ function getInstructionRequirements(instruction) {
             break;
         case 'PAIR': // TODO: how to determine ty1 & ty2? && there's a PAIR n version now that's not represented here
         case 'SWAP':
-        case 'UNPAIR': // TODO: how to implement UNPAIR n version?
             requirements.push(false, ['', '']);
-            break;
-        case 'READ_TICKET':
-            requirements.push(false, ['ticket']);
-            break;
-        case 'SAPLING_VERIFY_UPDATE':
-            requirements.push(false, ['sapling_transaction', 'sapling_state']);
             break;
         case 'SIZE':
             requirements.push(true, [['set'], ['map'], ['list'], ['string'], ['bytes']]);
@@ -235,16 +207,10 @@ function getInstructionRequirements(instruction) {
         case 'SLICE':
             requirements.push(true, [['nat', 'nat', 'string'], ['nat', 'nat', 'bytes']]);
             break;
-        case 'SPLIT_TICKET':
-            requirements.push(false, ['ticket', 'pair']);
-            break;
         case 'SUB':
             requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['timestamp', 'int'],
                               ['timestamp', 'timestamp'], ['mutez', 'mutez']]);
-            break;
-        case 'TICKET':
-            requirements.push(false, ['', 'nat']);
             break;
         case 'TRANSFER_TOKENS':
             requirements.push(false, ['', 'mutez', 'contract']);
@@ -253,7 +219,6 @@ function getInstructionRequirements(instruction) {
             requirements.push(false, ['', 'bytes']);
             break;
         case 'UPDATE':
-            // TODO: how to implement UPDATE n version?
             requirements.push(true, [['', 'bool', 'set'], ['', 'option', 'map'],
                               ['', 'option', 'big_map']]);
             break;
@@ -325,11 +290,6 @@ global.applyADD = (instruction, parameters, stack) => {
                                 (parseInt(parameters[0].value[0]) + 
                                  parseInt(parameters[1].value[0])).toString()
                             ]);
-        case "bls12_381_g1":
-        case "bls12_381_g2":
-        case "bls12_381_fr":
-            // not implemented
-            break;
     }
 };
 global.applyADDRESS = (instruction, parameters, stack) => {
@@ -572,10 +532,6 @@ global.applyGET = (instruction, parameters, stack) => {
     // Not implemented
     return new Data("option", []);
 };
-global.applyGET_AND_UPDATE = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("option", []);
-};
 global.applyGT = (instruction, parameters, stack) => {
     const result = new Data("bool", []);
     if (parseInt(parameters[0].value[0]) > 0) {
@@ -618,8 +574,7 @@ global.applyIMPLICIT_ACCOUNT = (instruction, parameters, stack) => {
     return new Data("contract", [new Data("unit", [])]);
 };
 global.applyINT = (instruction, parameters, stack) => {
-    // Not implemented for bls12_381_fr
-    return new Data("int", [parameters[0].prim === "bls12_381_fr" ? 0 : parameters[0].value[0]]);
+    return new Data("int", [parameters[0].value[0]]);
 };
 global.applyISNAT = (instruction, parameters, stack) => {
     const result = new Data("option", []);
@@ -634,13 +589,6 @@ global.applyISNAT = (instruction, parameters, stack) => {
 global.applyITER = (instruction, parameters, stack) => {
     // Not implemented
     return null;
-};
-global.applyJOIN_TICKETS = (instruction, parameters, stack) => {
-    // Not implemented
-    return null;
-};
-global.applyKECCAK = (instruction, parameters, stack) => {
-    return new Data("bytes", [keccak256("0x" + parameters[0].value[0]).toString('hex')]);
 };
 global.applyLAMBDA = (instruction, parameters, stack) => {
     // Not implemented
@@ -661,10 +609,6 @@ global.applyLEFT = (instruction, parameters, stack) => {
     } else {
         return new Data("or", ["Left", parameters[0]]);
     }
-};
-global.applyLEVEL = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data('nat', ['0']);
 };
 global.applyLOOP = (instruction, parameters, stack) => {
     // Not implemented yet
@@ -714,11 +658,7 @@ global.applyMUL = (instruction, parameters, stack) => {
 
     switch (parameters[0].prim) {
         case "nat":
-            if (["nat", "int", "mutez"].includes(parameters[1].prim)) {
-                t = parameters[1].prim;
-            } else {
-                throw('MUL not implemented for BLS12_381 variables');
-            }
+            t = parameters[1].prim;
             break;
         case "int":
             t = "int";
@@ -726,15 +666,10 @@ global.applyMUL = (instruction, parameters, stack) => {
         case "mutez":
             t = "mutez";
             break;
-        default:
-            throw('MUL not implemented for BLS12_381 variables');
     }
     return new Data(t, [(z1 * z2).toString()]);
 };
 global.applyNEG = (instruction, parameters, stack) => {
-    if (!["nat", "int"].includes(parameters[0].prim)) {
-        throw('NEG not implemented for BLS12_381 variables');
-    }
     return new Data("int", [(-parseInt(parameters[0].value[0])).toString()]);
 };
 global.applyNEQ = (instruction, parameters, stack) => {
@@ -790,17 +725,9 @@ global.applyPAIR = (instruction, parameters, stack) => {
     }
     return new Data('pair', [parameters[0], parameters[1]]);
 };
-global.applyPAIRING_CHECK = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data('bool', ['False']);
-};
 global.applyPUSH = (instruction, parameters, stack) => {
     const value = instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes || instruction.args[1].prim;
     return new Data(instruction.args[0].prim, [value]);
-};
-global.applyREAD_TICKET = (instruction, parameters, stack) => {
-    // Not implemented
-    return [new Data('pair', []), new Data('ticket', [])];
 };
 global.applyRIGHT = (instruction, parameters, stack) => {
     if (instruction.args[0].prim !== parameters[0].prim) {
@@ -809,21 +736,9 @@ global.applyRIGHT = (instruction, parameters, stack) => {
         return new Data("or", ["Right", parameters[0]]);
     }
 };
-global.applySAPLING_EMPTY_STATE = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data('sapling_state', []);
-};
-global.applySAPLING_VERIFY_UPDATE = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data('option', []);
-};
 global.applySELF = (instruction, parameters, stack) => {
     // Not implemented
     return new Data("contract", []);
-};
-global.applySELF_ADDRESS = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("address", []);
 };
 global.applySENDER = (instruction, parameters, stack) => {
     // Not implemented
@@ -835,9 +750,6 @@ global.applySET_DELEGATE = (instruction, parameters, stack) => {
 };
 global.applySHA256 = (instruction, parameters, stack) => {
     return new Data("bytes", [sha256(parameters[0].value[0]).toString('hex')]);
-};
-global.applySHA3 = (instruction, parameters, stack) => {
-    return new Data("bytes", [sha3_256(parameters[0].value[0]).toString('hex')]);
 };
 global.applySHA512 = (instruction, parameters, stack) => {
     return new Data("bytes", [sha512(parameters[0].value[0]).toString('hex')]);
@@ -870,10 +782,6 @@ global.applySOURCE = (instruction, parameters, stack) => {
     // Not implemented
     return new Data("address", []);
 };
-global.applySPLIT_TICKET = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data('option', ['Some', new Data('pair', [new Data('ticket', []), new Data('ticket', [])])]);
-};
 global.applySUB = (instruction, parameters, stack) => {
     if ([parameters[0].prim, parameters[1].prim].includes("timestamp") &&
         (/[a-z]/i.test(parameters[0].value[0]) || /[a-z]/i.test(parameters[1].value[0]))) {
@@ -905,14 +813,6 @@ global.applySUB = (instruction, parameters, stack) => {
 global.applySWAP = (instruction, parameters, stack) => {
     return deserialize(serialize(parameters)).reverse();
 };
-global.applyTICKET = (instruction, parameters, stack) => {
-    // Not tested
-    return new Data("ticket", [parameters[0]]);
-};
-global.applyTOTAL_VOTING_POWER = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("nat", ["0"]);
-};
 global.applyTRANSFER_TOKENS = (instruction, parameters, stack) => {
     // Not implemented
     return new Data("operation", []);
@@ -924,23 +824,11 @@ global.applyUNPACK = (instruction, parameters, stack) => {
     // Not implemented
     return new Data('option', ['None']);
 };
-global.applyUNPAIR = (instruction, parameters, stack) => {
-    // Implemented but parser doesn't use it as it's been introduced in Edo
-    if (instruction.hasOwnProperty('args')) {
-        throw("UNPAIR 'n' case hasn't been implemented");
-    }
-    return [parameters[0].value[0], parameters[0].value[1]];
-};
 global.applyUPDATE = (instruction, parameters, stack) => {
-    // Not implemented yet
     if (instruction.hasOwnProperty('args')) {
         throw("UPDATE 'n' case hasn't been implemented");
     }
     return parameters[2];
-};
-global.applyVOTING_POWER = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data('nat', ['0']);
 };
 global.applyXOR = (instruction, parameters, stack) => {
     if (parameters[0].prim === 'bool') {

@@ -17,7 +17,6 @@ class Data {
             case 'key_hash':
             case 'mutez':
             case 'nat':
-            case 'never':
             case 'option':
             case 'or':
             case 'pair':
@@ -28,16 +27,11 @@ class Data {
                 this.attributes = ["C", "PM", "S", "PU", "PA", "B", "D"];
                 break;
             case 'big_map':
-            case 'sapling_state':
                 this.attributes = ["PM", "S", "D"];
                 break;
-            case 'bls12_381_fr':
-            case 'bls12_381_g1':
-            case 'bls12_381_g2':
             case 'lambda':
             case 'list':
             case 'map':
-            case 'sapling_transaction':
             case 'set':
                 this.attributes = ["PM", "S", "PU", "PA", "B", "D"];
                 break;
@@ -46,9 +40,6 @@ class Data {
                 break;
             case 'operation':
                 this.attributes = ["D"];
-                break;
-            case 'ticket':
-                this.attributes = ["PM", "S", "B"];
                 break;
             default:
                 throw ('unknown data type '.concat(this.prim));
