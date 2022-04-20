@@ -9,13 +9,10 @@ const base58check = require('base58check');
 const sha256 = require('js-sha256').sha256;
 const sha512 = require('js-sha512').sha512;
 
-function initialize(parameter, storage) {
-    return new Data("pair",
-                    [new Data(parameter.prim,
-                              parameter.args || []),
-                     new Data(storage.prim,
-                              storage.args || [])]
-                    );
+function initialize(parameterType, parameter, storageType, storage) {
+    const parameterResult = global["parse" + parameterType.prim.toUpperCase()].call(null, parameterType.args, parameter);
+    const storageResult = global["parse" + storageType.prim.toUpperCase()].call(null, storageType.args, storage);
+    return new Data('pair', [parameterResult, storageResult]);
 }
 
 // returns [null or >= 1 strings]
@@ -841,12 +838,257 @@ global.applyXOR = (instruction, parameters, stack) => {
 };
 // instruction functions end
 
+// parsing functions start
+global.parsePAIR = (args, value) => {
+    const re = /\s*\(\s*Pair\s+((?:\(.+\))|(?:.+))\s+((?:\(.+\))|(?:.+))\s*\)\s*/;
+    const output = new Data('pair', []);
+    const params = value.match(re);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
+    }
+    output.value.push(global["parse" + args[0].prim.toUpperCase()].call(null, args[0].args, params[1]));
+    output.value.push(global["parse" + args[1].prim.toUpperCase()].call(null, args[1].args, params[2]));
+    return output;
+};
+global.parseINT = (args, value) => {
+    return new Data('mutez', [value]);
+};
+global.parseMUTEZ = (args, value) => {
+    return new Data('mutez', [value]);
+};
+global.parseNAT = (args, value) => {
+    return new Data('mutez', [value]);
+};
+global.parseADDRESS = (args, value) => {
+    return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
+};
+global.parseSTRING = (args, value) => {
+    return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
+};
+global.parseKEY = (args, value) => {
+    return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
+};
+global.parseKEY_HASH = (args, value) => {
+    return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
+};
+global.parseUNIT = (args, value) => {
+    return new Data('unit', ['Unit']);
+};
+global.parseBOOL = (args, value) => {
+    return new Data('bool', [value])
+};
+global.parseMAP = (args, value) => {
+    const re1 = /\s*\{\s*((?:Elt\s+.+\s+.+\s*;\s*)+(?:Elt\s+.+\s+.+\s*)?)\}\s*/;
+    const re2 = /Elt\s+(.*)\s+(.*)/;
+    const output = new Data('map', [new Map()]);
+    const keyType = args[0].prim;
+    const valueType = args[1].prim;
+
+    const params = value.match(re1);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
+    }
+    const kv = [];
+    params[1].split(';').forEach(e => kv.push(e.trim()));
+    if (kv[kv.length - 1] === "") {
+        kv.pop();
+    }
+    for (const i of kv) {
+        const r = i.match(re2);
+        if (r === null) {
+            throw("input doesn't match with the specified types");
+        }
+        // r[1] is the key, and r[2] is the value
+        switch(keyType) {
+            case 'int':
+            case 'mutez':
+            case 'nat':
+            case 'timestamp':
+            case 'bytes':
+            case 'signature':
+            case 'bool':
+                if (output.value[0].has(r[1])) {
+                    throw('key already present in map');
+                }
+                break;
+            case 'string':
+            case 'address':
+            case 'key':
+            case 'key_hash':
+                r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
+                if (output.value[0].has(r[1])) {
+                    throw('key already present in map');
+                }
+                break;
+            default:
+                throw('not implemented');
+        }
+        if (['string', 'address', 'key', 'key_hash'].includes(valueType)) {
+            r[2] = r[2].replace(/^"(.+(?="$))"$/, '$1');
+        }
+        output.value[0].set(r[1], r[2]);
+    }
+    return output;
+};
+global.parseLIST = (args, value) => {
+    const re1 = /\s*\{\s*((?:Elt\s+.+\s*;\s*)+(?:Elt\s+.+\s*)?)\}\s*/;
+    const re2 = /Elt\s+(.*)/;
+    const output = new Data('list', [[]]);
+    const listType = args[0].prim;
+
+    const params = value.match(re1);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
+    }
+    const elements = [];
+    params[1].split(';').forEach(e => elements.push(e.trim()));
+    if (elements[elements.length - 1] === "") {
+        elements.pop();
+    }
+    for (const i of elements) {
+        const r = i.match(re2);
+        if (r === null) {
+            throw("input doesn't match with the specified types");
+        }
+        if (['string', 'address', 'key', 'key_hash'].includes(listType)) {
+            r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
+        }
+        output.value[0].push(r[1]);
+    }
+    return output;
+};
+global.parseTIMESTAMP = (args, value) => {
+    const output = new Data('timestamp', []);
+    if (/[a-z]/i.test(value)) {
+        output.value.push((new Date(value.replace(/^"(.+(?="$))"$/, '$1'))).getTime().toString());
+    } else {
+        output.value.push(value.toString());
+    }
+    return output;
+};
+global.parseBIG_MAP = (args, value) => {
+    const re1 = /\s*\{\s*((?:Elt\s+.+\s+.+\s*;\s*)+(?:Elt\s+.+\s+.+\s*)?)\}/;
+    const re2 = /Elt\s+(.*)\s+(.*)/;
+    const output = new Data('map', [new Map()]);
+    const keyType = args[0].prim;
+    const valueType = args[1].prim;
+
+    const params = value.match(re1);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
+    }
+    const kv = [];
+    params[1].split(';').forEach(e => kv.push(e.trim()));
+    if (kv[kv.length - 1] === "") {
+        kv.pop();
+    }
+    for (const i of kv) {
+        const r = i.match(re2);
+        if (r === null) {
+            throw("input doesn't match with the specified types");
+        }
+        // r[1] is the key, and r[2] is the value
+        switch(keyType) {
+            case 'int':
+            case 'mutez':
+            case 'nat':
+            case 'timestamp':
+            case 'bytes':
+            case 'signature':
+            case 'bool':
+                if (output.value[0].has(r[1])) {
+                    throw('key already present in map');
+                }
+                break;
+            case 'string':
+            case 'address':
+            case 'key':
+            case 'key_hash':
+                r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
+                if (output.value[0].has(r[1])) {
+                    throw('key already present in map');
+                }
+                break;
+            default:
+                throw('not implemented');
+        }
+        if (['string', 'address', 'key', 'key_hash'].includes(valueType)) {
+            r[2] = r[2].replace(/^"(.+(?="$))"$/, '$1');
+        }
+        output.value[0].set(r[1], r[2]);
+    }
+    return output;
+};
+global.parseBYTES = (args, value) => {
+    const re = /0x([a-fA-F0-9]+)/;
+    const r = value.match(re);
+    if (r === null) {
+        throw("can't parse");
+    }
+    return new Data('bytes', [r[1]]);
+};
+global.parseSIGNATURE = (args, value) => {
+    // unfortunately no validation as of now
+    return new Data('signature', [value]);
+};
+global.parseSET = (args, value) => {
+    const re = /\s*\{((?:.+\s*;)+(?:.+\s*)?)\s*\}\s*/;
+    const output = new Data('set', [new Set()]);
+    const setType = args[0].prim;
+
+    const params = value.match(re);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
+    }
+    const elements = [];
+    params[1].split(';').forEach(e => elements.push(e.trim()));
+    if (elements[elements.length - 1] === "") {
+        elements.pop();
+    }
+    for (let i = 0; i < elements.length; i++) {
+        switch(setType) {
+            case 'int':
+            case 'mutez':
+            case 'nat':
+            case 'timestamp':
+            case 'bytes':
+            case 'signature':
+            case 'bool':
+                if (output.value[0].has(elements[i])) {
+                    throw('key already present in map');
+                }
+                break;
+            case 'string':
+            case 'address':
+            case 'key':
+            case 'key_hash':
+                elements[i] = elements[i].replace(/^"(.+(?="$))"$/, '$1');
+                if (output.value[0].has(elements[i])) {
+                    throw('key already present in map');
+                }
+                break;
+            default:
+                throw('not implemented');
+        }
+        output.value[0].add(elements[i]);
+    }
+    return output;
+};
+// parsing functions end
+
 // boilerplate instruction function start
 global.apply = (instruction, parameters, stack) => {
     console.dir(instruction, { depth: null });
     console.dir(parameters, { depth: null });
 };
 // boilerplate instruction function end
+
+// boilerplate parsing function start
+global.parse = (args, value) => {
+    console.dir(args, { depth: null });
+    console.dir(value, { depth: null });
+};
+// boilerplate parsing function end
 
 // from https://github.com/sindresorhus/array-move, because somehow I couldn't import it
 function arrayMoveMutable(array, fromIndex, toIndex) {
