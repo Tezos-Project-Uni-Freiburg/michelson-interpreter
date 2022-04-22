@@ -48,9 +48,9 @@ function main(state, script, parameter, storage) {
 
 // test run:
 // const script = fs.readFileSync(process.argv[2], 'utf8');
+// const script = fs.readFileSync('/Users/berkay/GitHub/michelson-parser/test/macros_guestbook.tz', 'utf8');
 const script = fs.readFileSync('/Users/berkay/test.tz', 'utf8');
-// const script = fs.readFileSync('/Users/berkay/test.tz', 'utf8');
 const state = new State(200000, 2000000, 0, "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx", "default", "2022-01-01T00:00:00.000Z", "KT1QuofAgnsWffHzLA7D78rxytJruGHDe7XG");
-var parameter = '(Pair 0 "a")';
-var storage = '{3 ; 4 ; 5}';
+var parameter = '"aaaa"';
+var storage = '{ Elt "tz1KqTpEZ7Yob7QbPE4Hy" (Some "aaaa") ; Elt "tz2VGBaXuS6rnaa5hpC92" (None) }';
 main(state, script, parameter, storage);

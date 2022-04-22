@@ -27,7 +27,7 @@ function getInstructionParameters(requirements, stack) {
         }
         const reqElems = stack.slice(-reqSize).reverse();
         for (let i = 0; i < requirements[1].length; i++) {
-            if (reqElems.slice(0, requirements[1][i].length).map(x => x.prim).every((e, index) => e === requirements[1][i][index])) {
+            if (reqElems.slice(0, requirements[1][i].length).map(x => x.prim).every((e, index) => (e === requirements[1][i][index] || !!e))) {
                 flag = true;
                 return reqElems.slice(0, requirements[1][i].length);
             }
@@ -82,7 +82,6 @@ function getInstructionRequirements(instruction) {
         case 'BALANCE':
         case 'CHAIN_ID':
         case 'CONS': // TODO: how to figure out that the ty1 and type of list is the same?
-        case 'CONTRACT': // TODO: how to figure out the type of contract & address?
         case 'CREATE_CONTRACT': // TODO
         case 'DIG':
         case 'DIP':
@@ -122,6 +121,8 @@ function getInstructionRequirements(instruction) {
             // TODO: how to figure out that the type of list is either string or bytes?
             requirements.push(true, [['string', 'string'], ['bytes', 'bytes'], ['list']]);
             break;
+        case 'CONTRACT':
+            requirements.push(false, ['address']);
         case 'EDIV':
             requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['mutez', 'nat'], ['mutez', 'mutez']]);
@@ -375,8 +376,8 @@ global.applyCONS = (instruction, parameters, stack) => {
     return new Data("list", []);
 };
 global.applyCONTRACT = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("option", []);
+    // Not implemented completely
+    return new Data("option", ["Some", "contract", parameters[0].value[0]]);
 };
 global.applyCREATE_CONTRACT = (instruction, parameters, stack) => {
     // Not implemented
@@ -442,7 +443,7 @@ global.applyEDIV = (instruction, parameters, stack) => {
         result.value.push("None");
         return result;
     } else {
-        result.value.push("Some");
+        result.value.push("Some", "pair");
     }
 
     const q = Math.trunc(z1/z2);
@@ -527,7 +528,7 @@ global.applyGE = (instruction, parameters, stack) => {
 };
 global.applyGET = (instruction, parameters, stack) => {
     // Not implemented
-    return new Data("option", []);
+    return new Data("option", ["None"]);
 };
 global.applyGT = (instruction, parameters, stack) => {
     const result = new Data("bool", []);
@@ -579,7 +580,7 @@ global.applyISNAT = (instruction, parameters, stack) => {
     if (v < 0) {
         result.value.push("None");
     } else {
-        result.value.push("Some", new Data("nat", [parameters[0].value[0]]));
+        result.value.push("Some", "nat", new Data("nat", [parameters[0].value[0]]));
     }
     return result;
 };
@@ -688,7 +689,7 @@ global.applyNONE = (instruction, parameters, stack) => {
     if (!instruction.hasOwnProperty('args')) {
         throw('type of option is not declared');
     }
-    return new Data('option', ["None"]);
+    return new Data('option', ["None", instruction.args[0].prim]);
 };
 global.applyNOT = (instruction, parameters, stack) => {
     switch(parameters[0].prim) {
@@ -723,8 +724,16 @@ global.applyPAIR = (instruction, parameters, stack) => {
     return new Data('pair', [parameters[0], parameters[1]]);
 };
 global.applyPUSH = (instruction, parameters, stack) => {
-    const value = instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes || instruction.args[1].prim;
-    return new Data(instruction.args[0].prim, [value]);
+    if (instruction.args[0].prim === 'option') {
+        const output = new Data('option', [instruction.args[1].prim, instruction.args[0].args[0].prim]);
+        if (instruction.args[1].prim != 'None') {
+            output.value.push(instruction.args[1].args[0].int || instruction.args[1].args[0].string || instruction.args[1].args[0].bytes || instruction.args[1].args[0].prim);
+        }
+        return output;
+    } else {
+        const value = instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes || instruction.args[1].prim;
+        return new Data(instruction.args[0].prim, [value]);
+    }
 };
 global.applyRIGHT = (instruction, parameters, stack) => {
     if (instruction.args[0].prim !== parameters[0].prim) {
@@ -758,13 +767,14 @@ global.applySIZE = (instruction, parameters, stack) => {
     return new Data('nat', [parameters[0].value[0].length.toString()]);
 };
 global.applySLICE = (instruction, parameters, stack) => {
+    // Not implemented for bytes
     const offset = parseInt(parameters[0].value[0]);
     const len = parseInt(parameters[1].value[0]);
     const str = parameters[2].value[0];
     if (str.length == 0 || offset >= str.length || offset + len > str.length) {
-        return new Data('option', ["None"]);
+        return new Data('option', ['None', 'string']);
     } else if (offset < str.length && offset + len <= str.length) {
-        return new Data('option', ['Some', new Data('string', [str.slice(offset, offset + len)])]);
+        return new Data('option', ['Some', 'string', new Data('string', [str.slice(offset, offset + len)])]);
     }
 };
 global.applySOME = (instruction, parameters, stack) => {
@@ -773,7 +783,7 @@ global.applySOME = (instruction, parameters, stack) => {
     } else if (instruction.args[0].prim !== parameters[0].prim) {
         throw("stack value and option type doesn't match");
     }
-    return new Data('option', ["Some", parameters[0]]);
+    return new Data('option', ["Some", instruction.args[0].prim, parameters[0]]);
 };
 global.applySOURCE = (instruction, parameters, stack) => {
     // Not implemented
@@ -819,7 +829,7 @@ global.applyUNIT = (instruction, parameters, stack) => {
 };
 global.applyUNPACK = (instruction, parameters, stack) => {
     // Not implemented
-    return new Data('option', ['None']);
+    return new Data('option', ['None', instruction.args[0].prim]);
 };
 global.applyUPDATE = (instruction, parameters, stack) => {
     if (instruction.hasOwnProperty('args')) {
@@ -839,43 +849,108 @@ global.applyXOR = (instruction, parameters, stack) => {
 // instruction functions end
 
 // parsing functions start
-global.parsePAIR = (args, value) => {
-    const re = /\s*\(\s*Pair\s+((?:\(.+\))|(?:.+))\s+((?:\(.+\))|(?:.+))\s*\)\s*/;
-    const output = new Data('pair', []);
-    const params = value.match(re);
-    if (params === null) {
-        throw("input doesn't match with the specified types");
-    }
-    output.value.push(global["parse" + args[0].prim.toUpperCase()].call(null, args[0].args, params[1]));
-    output.value.push(global["parse" + args[1].prim.toUpperCase()].call(null, args[1].args, params[2]));
-    return output;
-};
-global.parseINT = (args, value) => {
-    return new Data('mutez', [value]);
-};
-global.parseMUTEZ = (args, value) => {
-    return new Data('mutez', [value]);
-};
-global.parseNAT = (args, value) => {
-    return new Data('mutez', [value]);
-};
 global.parseADDRESS = (args, value) => {
     return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
 };
-global.parseSTRING = (args, value) => {
-    return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
-};
-global.parseKEY = (args, value) => {
-    return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
-};
-global.parseKEY_HASH = (args, value) => {
-    return new Data('address', [value.replace(/^"(.+(?="$))"$/, '$1')]);
-};
-global.parseUNIT = (args, value) => {
-    return new Data('unit', ['Unit']);
+global.parseBIG_MAP = (args, value) => {
+    const re1 = /\s*\{\s*((?:Elt\s+.+\s+.+\s*;\s*)+(?:Elt\s+.+\s+.+\s*)?)\}/;
+    const re2 = /Elt\s+(.*)\s+(.*)/;
+    const output = new Data('big_map', [new Map()]);
+    const keyType = args[0].prim;
+    const valueType = args[1].prim;
+
+    const params = value.match(re1);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
+    }
+    const kv = [];
+    params[1].split(';').forEach(e => kv.push(e.trim()));
+    if (kv[kv.length - 1] === "") {
+        kv.pop();
+    }
+    for (const i of kv) {
+        const r = i.match(re2);
+        if (r === null) {
+            throw("input doesn't match with the specified types");
+        }
+        // r[1] is the key, and r[2] is the value
+        switch(keyType) {
+            case 'int':
+            case 'mutez':
+            case 'nat':
+            case 'timestamp':
+            case 'bytes':
+            case 'signature':
+            case 'bool':
+                if (output.value[0].has(r[1])) {
+                    throw('key already present in map');
+                }
+                break;
+            case 'string':
+            case 'address':
+            case 'key':
+            case 'key_hash':
+                r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
+                if (output.value[0].has(r[1])) {
+                    throw('key already present in map');
+                }
+                break;
+            default:
+                throw('not implemented');
+        }
+        if (['string', 'address', 'key', 'key_hash'].includes(valueType)) {
+            r[2] = r[2].replace(/^"(.+(?="$))"$/, '$1');
+        }
+        output.value[0].set(r[1], r[2]);
+    }
+    return output;
 };
 global.parseBOOL = (args, value) => {
-    return new Data('bool', [value])
+    return new Data('bool', [value]);
+};
+global.parseBYTES = (args, value) => {
+    const re = /0x([a-fA-F0-9]+)/;
+    const r = value.match(re);
+    if (r === null) {
+        throw("can't parse");
+    }
+    return new Data('bytes', [r[1]]);
+};
+global.parseINT = (args, value) => {
+    return new Data('int', [value]);
+};
+global.parseKEY = (args, value) => {
+    return new Data('key', [value.replace(/^"(.+(?="$))"$/, '$1')]);
+};
+global.parseKEY_HASH = (args, value) => {
+    return new Data('key_hash', [value.replace(/^"(.+(?="$))"$/, '$1')]);
+};
+global.parseLIST = (args, value) => {
+    const re1 = /\s*\{\s*((?:Elt\s+.+\s*;\s*)+(?:Elt\s+.+\s*)?)\}\s*/;
+    const re2 = /Elt\s+(.*)/;
+    const output = new Data('list', [[]]);
+    const listType = args[0].prim;
+
+    const params = value.match(re1);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
+    }
+    const elements = [];
+    params[1].split(';').forEach(e => elements.push(e.trim()));
+    if (elements[elements.length - 1] === "") {
+        elements.pop();
+    }
+    for (const i of elements) {
+        const r = i.match(re2);
+        if (r === null) {
+            throw("input doesn't match with the specified types");
+        }
+        if (['string', 'address', 'key', 'key_hash'].includes(listType)) {
+            r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
+        }
+        output.value[0].push(r[1]);
+    }
+    return output;
 };
 global.parseMAP = (args, value) => {
     const re1 = /\s*\{\s*((?:Elt\s+.+\s+.+\s*;\s*)+(?:Elt\s+.+\s+.+\s*)?)\}\s*/;
@@ -930,106 +1005,44 @@ global.parseMAP = (args, value) => {
     }
     return output;
 };
-global.parseLIST = (args, value) => {
-    const re1 = /\s*\{\s*((?:Elt\s+.+\s*;\s*)+(?:Elt\s+.+\s*)?)\}\s*/;
-    const re2 = /Elt\s+(.*)/;
-    const output = new Data('list', [[]]);
-    const listType = args[0].prim;
-
-    const params = value.match(re1);
+global.parseMUTEZ = (args, value) => {
+    return new Data('mutez', [value]);
+};
+global.parseNAT = (args, value) => {
+    return new Data('nat', [value]);
+};
+global.parseOPTION = (args, value) => {
+    // Currently no parameter type check is being done
+    const re = /\s*\(\s*(?:(?:Some)\s+([^\s]+)|(?:None)\s*)\s*\)\s*/;
+    const params = value.match(re);
     if (params === null) {
         throw("input doesn't match with the specified types");
     }
-    const elements = [];
-    params[1].split(';').forEach(e => elements.push(e.trim()));
-    if (elements[elements.length - 1] === "") {
-        elements.pop();
-    }
-    for (const i of elements) {
-        const r = i.match(re2);
-        if (r === null) {
-            throw("input doesn't match with the specified types");
-        }
-        if (['string', 'address', 'key', 'key_hash'].includes(listType)) {
-            r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
-        }
-        output.value[0].push(r[1]);
-    }
-    return output;
-};
-global.parseTIMESTAMP = (args, value) => {
-    const output = new Data('timestamp', []);
-    if (/[a-z]/i.test(value)) {
-        output.value.push((new Date(value.replace(/^"(.+(?="$))"$/, '$1'))).getTime().toString());
+    if (params[1] === undefined && params[0].includes("None")) {
+        return new Data('option', ['None', args[0].prim]);
     } else {
-        output.value.push(value.toString());
+        return new Data('option', ['Some', args[0].prim, params[1]]);
     }
-    return output;
 };
-global.parseBIG_MAP = (args, value) => {
-    const re1 = /\s*\{\s*((?:Elt\s+.+\s+.+\s*;\s*)+(?:Elt\s+.+\s+.+\s*)?)\}/;
-    const re2 = /Elt\s+(.*)\s+(.*)/;
-    const output = new Data('map', [new Map()]);
-    const keyType = args[0].prim;
-    const valueType = args[1].prim;
-
-    const params = value.match(re1);
+global.parseOR = (args, value) => {
+    // Currently no parameter type check is being done
+    const re = /\s*\(\s*(?:(Left|Right)\s+([^\s]+))\s*\)\s*/;
+    const params = value.match(re);
     if (params === null) {
         throw("input doesn't match with the specified types");
     }
-    const kv = [];
-    params[1].split(';').forEach(e => kv.push(e.trim()));
-    if (kv[kv.length - 1] === "") {
-        kv.pop();
+    return new Data('or', [params[1], params[2]]);
+};
+global.parsePAIR = (args, value) => {
+    const re = /\s*\(\s*Pair\s+((?:\(.+\))|(?:.+))\s+((?:\(.+\))|(?:.+))\s*\)\s*/;
+    const output = new Data('pair', []);
+    const params = value.match(re);
+    if (params === null) {
+        throw("input doesn't match with the specified types");
     }
-    for (const i of kv) {
-        const r = i.match(re2);
-        if (r === null) {
-            throw("input doesn't match with the specified types");
-        }
-        // r[1] is the key, and r[2] is the value
-        switch(keyType) {
-            case 'int':
-            case 'mutez':
-            case 'nat':
-            case 'timestamp':
-            case 'bytes':
-            case 'signature':
-            case 'bool':
-                if (output.value[0].has(r[1])) {
-                    throw('key already present in map');
-                }
-                break;
-            case 'string':
-            case 'address':
-            case 'key':
-            case 'key_hash':
-                r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
-                if (output.value[0].has(r[1])) {
-                    throw('key already present in map');
-                }
-                break;
-            default:
-                throw('not implemented');
-        }
-        if (['string', 'address', 'key', 'key_hash'].includes(valueType)) {
-            r[2] = r[2].replace(/^"(.+(?="$))"$/, '$1');
-        }
-        output.value[0].set(r[1], r[2]);
-    }
+    output.value.push(global["parse" + args[0].prim.toUpperCase()].call(null, args[0].args, params[1]));
+    output.value.push(global["parse" + args[1].prim.toUpperCase()].call(null, args[1].args, params[2]));
     return output;
-};
-global.parseBYTES = (args, value) => {
-    const re = /0x([a-fA-F0-9]+)/;
-    const r = value.match(re);
-    if (r === null) {
-        throw("can't parse");
-    }
-    return new Data('bytes', [r[1]]);
-};
-global.parseSIGNATURE = (args, value) => {
-    // unfortunately no validation as of now
-    return new Data('signature', [value]);
 };
 global.parseSET = (args, value) => {
     const re = /\s*\{((?:.+\s*;)+(?:.+\s*)?)\s*\}\s*/;
@@ -1073,6 +1086,25 @@ global.parseSET = (args, value) => {
         output.value[0].add(elements[i]);
     }
     return output;
+};
+global.parseSIGNATURE = (args, value) => {
+    // unfortunately no validation as of now
+    return new Data('signature', [value]);
+};
+global.parseSTRING = (args, value) => {
+    return new Data('string', [value.replace(/^"(.+(?="$))"$/, '$1')]);
+};
+global.parseTIMESTAMP = (args, value) => {
+    const output = new Data('timestamp', []);
+    if (/[a-z]/i.test(value)) {
+        output.value.push((new Date(value.replace(/^"(.+(?="$))"$/, '$1'))).getTime().toString());
+    } else {
+        output.value.push(value.toString());
+    }
+    return output;
+};
+global.parseUNIT = (args, value) => {
+    return new Data('unit', ['Unit']);
 };
 // parsing functions end
 
