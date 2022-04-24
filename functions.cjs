@@ -378,8 +378,8 @@ global.applyCONS = (instruction, parameters, stack) => {
 global.applyCONTRACT = (instruction, parameters, stack) => {
     // Not implemented completely
     const output = new Data("option", [parameters[0].value[0]]);
-    output.value.optionValue = "Some";
-    output.value.optionType = ["contract"];
+    output.optionValue = "Some";
+    output.optionType = ["contract"];
     return output;
 };
 global.applyCREATE_CONTRACT = (instruction, parameters, stack) => {
@@ -438,16 +438,16 @@ global.applyDUP = (instruction, parameters, stack) => {
     return deserialize(serialize(stack[stack.length - n]));
 };
 global.applyEDIV = (instruction, parameters, stack) => {
-    const result = new Data("option", []);
-    result.value.optionType = ['pair'];
+    const output = new Data("option", []);
+    output.optionType = ['pair'];
     const z1 = parseInt(parameters[0].value[0]);
     const z2 = parseInt(parameters[1].value[0]);
 
     if (z2 === 0) {
-        result.value.optionValue = 'None';
-        return result;
+        output.optionValue = 'None';
+        return output;
     } else {
-        result.value.optionValue = 'Some';
+        output.optionValue = 'Some';
     }
 
     const q = Math.trunc(z1/z2);
@@ -478,10 +478,10 @@ global.applyEDIV = (instruction, parameters, stack) => {
             t2 = "mutez";
             break;
     }
-    result.value.optionType.push(t1);
-    result.value.optionType.push(t2);
-    result.value.push(new Data("pair", [new Data(t1, [q.toString()]), new Data(t2, [r.toString()])]));
-    return result;
+    output.optionType.push(t1);
+    output.optionType.push(t2);
+    output.push(new Data("pair", [new Data(t1, [q.toString()]), new Data(t2, [r.toString()])]));
+    return output;
 };
 global.applyEMPTY_BIG_MAP = (instruction, parameters, stack) => {
     if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
@@ -533,10 +533,14 @@ global.applyGE = (instruction, parameters, stack) => {
     return result;
 };
 global.applyGET = (instruction, parameters, stack) => {
-    // Not implemented
     const output = new Data("option", []);
-    output.value.optionValue = "None";
-    output.value.optionType = [];
+    output.optionType = [parameters[1].keyType.prim];
+    if (parameters[1].value[0].has(parameters[0].value[0])) {
+        output.optionValue = 'Some';
+        output.value.push(parameters[1].value[0].get(parameters[0].value[0]));
+    } else {
+        output.optionValue = 'None';
+    }
     return output;
 };
 global.applyGT = (instruction, parameters, stack) => {
@@ -584,16 +588,16 @@ global.applyINT = (instruction, parameters, stack) => {
     return new Data("int", [parameters[0].value[0]]);
 };
 global.applyISNAT = (instruction, parameters, stack) => {
-    const result = new Data("option", []);
-    result.value.optionType = ["nat"];
+    const output = new Data("option", []);
+    output.optionType = ["nat"];
     const v = parseInt(parameters[0].value[0]);
     if (v < 0) {
-        result.value.optionValue = "None";
+        output.optionValue = "None";
         } else {
-        result.value.optionValue = "Some";
-        result.value.push(new Data("nat", [parameters[0].value[0]]));
+        output.optionValue = "Some";
+        output.value.push(new Data("nat", [parameters[0].value[0]]));
     }
-    return result;
+    return output;
 };
 global.applyITER = (instruction, parameters, stack) => {
     // Not implemented
@@ -700,10 +704,10 @@ global.applyNONE = (instruction, parameters, stack) => {
     if (!instruction.hasOwnProperty('args')) {
         throw('type of option is not declared');
     }
-    const result = new Data('option', [instruction.args[0].prim]);
-    result.value.optionValue = "None";
-    result.value.optionType = instruction.args;
-    return result;
+    const output = new Data('option', [instruction.args[0].prim]);
+    output.optionValue = "None";
+    output.optionType = instruction.args;
+    return output;
 };
 global.applyNOT = (instruction, parameters, stack) => {
     switch(parameters[0].prim) {
@@ -740,8 +744,8 @@ global.applyPAIR = (instruction, parameters, stack) => {
 global.applyPUSH = (instruction, parameters, stack) => {
     if (instruction.args[0].prim === 'option') {
         const output = new Data('option', []);
-        output.value.optionValue = instruction.args[1].prim;
-        output.value.optionType = [instruction.args[0].args[0].prim];
+        output.optionValue = instruction.args[1].prim;
+        output.optionType = [instruction.args[0].args[0].prim];
         output.value.push(instruction.args[1].args[0].int || instruction.args[1].args[0].string || instruction.args[1].args[0].bytes || instruction.args[1].args[0].prim);
         return output;
     } else {
@@ -761,8 +765,8 @@ global.applySELF = (instruction, parameters, stack) => {
     return new Data("contract", []);
 };
 global.applySENDER = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("address", []);
+    // Not implemented correctly/completely
+    return new Data("address", [global.currentState.address]);
 };
 global.applySET_DELEGATE = (instruction, parameters, stack) => {
     // Not implemented
@@ -786,11 +790,11 @@ global.applySLICE = (instruction, parameters, stack) => {
     const len = parseInt(parameters[1].value[0]);
     const str = parameters[2].value[0];
     const output = new Data('option', []);
-    output.value.optionType = ['string'];
+    output.optionType = ['string'];
     if (str.length == 0 || offset >= str.length || offset + len > str.length) {
-        output.value.optionValue = 'None';
+        output.optionValue = 'None';
     } else if (offset < str.length && offset + len <= str.length) {
-        output.value.optionValue = 'Some';
+        output.optionValue = 'Some';
         output.value.push(new Data('string', [str.slice(offset, offset + len)]));
     }
     return output;
@@ -802,8 +806,8 @@ global.applySOME = (instruction, parameters, stack) => {
         throw("stack value and option type doesn't match");
     }
     const output = new Data('option', [parameters[0]]);
-    output.value.optionValue = 'Some';
-    output.value.optionType = [instruction.args[0].prim];
+    output.optionValue = 'Some';
+    output.optionType = [instruction.args[0].prim];
     return output;
 };
 global.applySOURCE = (instruction, parameters, stack) => {
@@ -851,8 +855,8 @@ global.applyUNIT = (instruction, parameters, stack) => {
 global.applyUNPACK = (instruction, parameters, stack) => {
     // Not implemented
     const output = new Data('option', []);
-    output.value.optionValue = 'None';
-    output.value.optionType = [instruction.args[0].prim];
+    output.optionValue = 'None';
+    output.optionType = [instruction.args[0].prim];
     return output;
 };
 global.applyUPDATE = (instruction, parameters, stack) => {
@@ -863,7 +867,7 @@ global.applyUPDATE = (instruction, parameters, stack) => {
             parameters[2].value[0].delete(parameters[2].value);
         }
     } else {
-        if (parameters[1].value.optionValue === 'Some') {
+        if (parameters[1].optionValue === 'Some') {
             parameters[2].value[0].set(parameters[0].value[0], parameters[1]);
         } else if (parameters[2].value[0].has(parameters[0].value[0])) {
             parameters[2].value[0].delete(parameters[0].value[0]);
@@ -890,8 +894,8 @@ global.parseBIG_MAP = (args, value) => {
     const re1 = /\s*\{\s*((?:Elt\s+.+\s+.+\s*;\s*)+(?:Elt\s+.+\s+.+\s*)?)\}\s*/;
     const re2 = /Elt\s+([a-zA-Z0-9"_ ]+)\s+(.+)/;
     const output = new Data('big_map', [new Map()]);
-    output.value.keyType = args[0];
-    output.value.valueType = args[1];
+    output.keyType = args[0];
+    output.valueType = args[1];
 
     const params = value.match(re1);
     if (params === null) {
@@ -908,7 +912,7 @@ global.parseBIG_MAP = (args, value) => {
             throw("input doesn't match with the specified types");
         }
         // r[1] is the key, and r[2] is the value
-        switch(output.value.keyType.prim) {
+        switch(output.keyType.prim) {
             case 'int':
             case 'mutez':
             case 'nat':
@@ -932,7 +936,7 @@ global.parseBIG_MAP = (args, value) => {
             default:
                 throw('not implemented');
         }
-        const value = global["parse" + output.value.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
+        const value = global["parse" + output.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
         output.value[0].set(r[1], value);
     }
     return output;
@@ -988,8 +992,8 @@ global.parseMAP = (args, value) => {
     const re1 = /\s*\{\s*((?:Elt\s+.+\s+.+\s*;\s*)+(?:Elt\s+.+\s+.+\s*)?)\}\s*/;
     const re2 = /Elt\s+([a-zA-Z0-9"_ ]+)\s+(.+)/;
     const output = new Data('map', [new Map()]);
-    output.value.keyType = args[0];
-    output.value.valueType = args[1];
+    output.keyType = args[0];
+    output.valueType = args[1];
 
     const params = value.match(re1);
     if (params === null) {
@@ -1006,7 +1010,7 @@ global.parseMAP = (args, value) => {
             throw("input doesn't match with the specified types");
         }
         // r[1] is the key, and r[2] is the value
-        switch(output.value.keyType.prim) {
+        switch(output.keyType.prim) {
             case 'int':
             case 'mutez':
             case 'nat':
@@ -1030,7 +1034,7 @@ global.parseMAP = (args, value) => {
             default:
                 throw('not implemented');
         }
-        const value = global["parse" + output.value.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
+        const value = global["parse" + output.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
         output.value[0].set(r[1], value);
     }
     return output;
@@ -1045,16 +1049,16 @@ global.parseOPTION = (args, value) => {
     // Currently no parameter type check is being done
     const re = /\s*\(\s*(?:(?:Some)\s+([^\s]+)|(?:None)\s*)\s*\)\s*/;
     const output = new Data('option', []);
-    output.value.optionType = [args[0].prim];
+    output.optionType = [args[0].prim];
     const params = value.match(re);
     if (params === null) {
         throw("input doesn't match with the specified types");
     }
     if (params[1] === undefined && params[0].includes("None")) {
-        output.value.optionValue = 'None';
+        output.optionValue = 'None';
     } else {
-        output.value.optionValue = 'Some';
-        output.value.push(global["parse" + output.value.optionType[0].toUpperCase()].call(null, args, params[1]));
+        output.optionValue = 'Some';
+        output.value.push(global["parse" + output.optionType[0].toUpperCase()].call(null, args, params[1]));
     }
     return output;
 };
