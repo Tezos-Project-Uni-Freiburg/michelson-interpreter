@@ -123,6 +123,7 @@ function getInstructionRequirements(instruction) {
             break;
         case 'CONTRACT':
             requirements.push(false, ['address']);
+            break;
         case 'EDIV':
             requirements.push(true, [['nat', 'nat'], ['nat', 'int'], ['int', 'nat'],
                               ['int', 'int'], ['mutez', 'nat'], ['mutez', 'mutez']]);
@@ -377,7 +378,7 @@ global.applyCONS = (instruction, parameters, stack) => {
 };
 global.applyCONTRACT = (instruction, parameters, stack) => {
     // Not implemented completely
-    const output = new Data("option", [parameters[0].value[0]]);
+    const output = new Data("option", [parameters[0]]);
     output.optionValue = "Some";
     output.optionType = ["contract"];
     return output;
@@ -569,16 +570,41 @@ global.applyIF = (instruction, parameters, stack) => {
     return null;
 };
 global.applyIF_CONS = (instruction, parameters, stack) => {
-    // Not implemented yet
-    return null;
+    var branch = -1;
+    if (parameters[0].value[0].length > 0) {
+        const d = parameters[0].value[0].shift();
+        stack.push(parameters[0], d);
+        branch = 0;
+    } else {
+        branch = 1;
+    }
+    for (const i of instruction.args[branch].flat()) {
+        processInstruction(i, stack);
+    }
 };
 global.applyIF_LEFT = (instruction, parameters, stack) => {
-    // Not implemented yet
-    return null;
+    var branch = -1;
+    stack.push(parameters[0].value[0]);
+    if (parameters[0].orValue === 'Left') {
+        branch = 0;
+    } else {
+        branch = 1;
+    }
+    for (const i of instruction.args[branch].flat()) {
+        processInstruction(i, stack);
+    }
 };
 global.applyIF_NONE = (instruction, parameters, stack) => {
-    // Not implemented yet
-    return null;
+    var branch = -1;
+    if (parameters[0].optionValue === 'None') {
+        branch = 0;
+    } else {
+        branch = 1;
+        stack.push(parameters[0].value[0]);
+    }
+    for (const i of instruction.args[branch].flat()) {
+        processInstruction(i, stack);
+    }
 };
 global.applyIMPLICIT_ACCOUNT = (instruction, parameters, stack) => {
     // Not implemented
@@ -698,7 +724,9 @@ global.applyNIL = (instruction, parameters, stack) => {
     if (!instruction.hasOwnProperty('args')) {
         throw('type of list is not declared');
     }
-    return new Data('list', [instruction.args[0].prim]);
+    const output = new Data('list', [[]]);
+    output.listType = instruction.args[0];
+    return output;
 };
 global.applyNONE = (instruction, parameters, stack) => {
     if (!instruction.hasOwnProperty('args')) {
@@ -742,16 +770,35 @@ global.applyPAIR = (instruction, parameters, stack) => {
     return new Data('pair', [parameters[0], parameters[1]]);
 };
 global.applyPUSH = (instruction, parameters, stack) => {
-    if (instruction.args[0].prim === 'option') {
-        const output = new Data('option', []);
-        output.optionValue = instruction.args[1].prim;
-        output.optionType = [instruction.args[0].args[0].prim];
-        output.value.push(instruction.args[1].args[0].int || instruction.args[1].args[0].string || instruction.args[1].args[0].bytes || instruction.args[1].args[0].prim);
-        return output;
-    } else {
-        const value = instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes || instruction.args[1].prim;
-        return new Data(instruction.args[0].prim, [value]);
+    const output = new Data(instruction.args[0].prim, []);
+    switch (instruction.args[0].prim) {
+        case 'option':
+            output.optionValue = instruction.args[1].prim;
+            output.optionType = [instruction.args[0].args[0]];
+            if (output.optionValue !== 'None') {
+                const v1 = new Data(output.optionType[0].prim, [instruction.args[1].args[0].int ||
+                                                            instruction.args[1].args[0].string ||
+                                                            instruction.args[1].args[0].bytes ||
+                                                            instruction.args[1].args[0].prim]);
+                output.value.push(v1);
+            }
+            break;
+        case 'or':
+            output.orValue = instruction.args[1].prim;
+            output.orType = instruction.args[0].args;
+            const v2 = new Data(output.orValue === 'Left' ? output.orType[0].prim :
+                                                           output.orType[1].prim, [instruction.args[1].args[0].int ||
+                                                                                   instruction.args[1].args[0].string ||
+                                                                                   instruction.args[1].args[0].bytes ||
+                                                                                   instruction.args[1].args[0].prim]);
+            output.value.push(v2);
+            break;
+        default:
+            const value = instruction.args[1].int || instruction.args[1].string || instruction.args[1].bytes || instruction.args[1].prim;
+            output.value.push(value);
+            break;
     }
+    return output;
 };
 global.applyRIGHT = (instruction, parameters, stack) => {
     if (instruction.args[0].prim !== parameters[0].prim) {
@@ -965,7 +1012,7 @@ global.parseLIST = (args, value) => {
     const re1 = /\s*\{\s*((?:Elt\s+.+\s*;\s*)+(?:Elt\s+.+\s*)?)\}\s*/;
     const re2 = /Elt\s+(.*)/;
     const output = new Data('list', [[]]);
-    output.value.listType = args[0];
+    output.listType = args[0];
 
     const params = value.match(re1);
     if (params === null) {
@@ -981,10 +1028,8 @@ global.parseLIST = (args, value) => {
         if (r === null) {
             throw("input doesn't match with the specified types");
         }
-        if (['string', 'address', 'key', 'key_hash'].includes(output.value.listType.prim)) {
-            r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
-        }
-        output.value[1].push(r[1]);
+        const value = global["parse" + output.listType.prim.toUpperCase()].call(null, args[0], r[1]);
+        output.value[0].push(value);
     }
     return output;
 };
@@ -1066,10 +1111,15 @@ global.parseOR = (args, value) => {
     // Currently no parameter type check is being done
     const re = /\s*\(\s*(?:(Left|Right)\s+([^\s]+))\s*\)\s*/;
     const params = value.match(re);
+    const output = new Data('or', []);
     if (params === null) {
         throw("input doesn't match with the specified types");
     }
-    return new Data('or', [params[1], params[2]]);
+    output.orValue = params[1];
+    output.orType = args;
+    const v2 = new Data(output.orValue === 'Left' ? output.orType[0].prim : output.orType[1].prim, [params[2]]);
+    output.value.push(v2);
+    return output;
 };
 global.parsePAIR = (args, value) => {
     const re = /\s*\(\s*Pair\s+((?:\(.+\))|(?:.+))\s+((?:\(.+\))|(?:.+))\s*\)\s*/;
