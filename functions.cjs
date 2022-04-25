@@ -228,12 +228,18 @@ function getInstructionRequirements(instruction) {
 }
 
 function processInstruction(instruction, stack) {
+    if (instruction.prim.includes('IF')) {
+        global.steps.push(new Step(new Delta([], []), instruction, stack));
+    }
+    let removed = [];
+    let added = [];
     const parameters = getInstructionParameters(getInstructionRequirements(instruction.prim), stack);
     if (parameters.length != 1 || parameters[0] != null) {
-        assert.deepEqual(stack.splice(-parameters.length).reverse(), parameters);
+        removed = stack.splice(-parameters.length).reverse();
+        assert.deepEqual(removed, parameters);
     }
     // We get the required elements of the stack with this.
-
+    
     // We need to do the actual operation here. But how?
     const result = global["apply" + instruction.prim].call(null, instruction, parameters, stack);
 
@@ -245,6 +251,7 @@ function processInstruction(instruction, stack) {
                 delete result.args;
             }
             stack.push(result);
+            added.push(result);
         } else {
             for (const i of result.reverse()) {
                 if (i.hasOwnProperty('args') && !i.hasOwnProperty('value')) {
@@ -252,11 +259,12 @@ function processInstruction(instruction, stack) {
                     delete i.args;
                 }
                 stack.push(i);
+                added.push(i);
             }
         }
     }
-
     // We need to update our state(s)?
+    return new Step(new Delta(removed, added), [instruction], stack);
 }
 
 // ---------------------------
@@ -560,11 +568,17 @@ global.applyIF = (instruction, parameters, stack) => {
     const v = JSON.parse(parameters[0].value[0].toLowerCase());
     if (v) {
         for (const i of instruction.args[0].flat()) {
-            processInstruction(i, stack);
+            const step = processInstruction(i, stack);
+            if (!i.prim.includes('IF')) {
+                global.steps.push(step);
+            }
         }
     } else {
         for (const i of instruction.args[1].flat()) {
-            processInstruction(i, stack);
+            const step = processInstruction(i, stack);
+            if (!i.prim.includes('IF')) {
+                global.steps.push(step);
+            }
         }
     }
     return null;
@@ -579,7 +593,10 @@ global.applyIF_CONS = (instruction, parameters, stack) => {
         branch = 1;
     }
     for (const i of instruction.args[branch].flat()) {
-        processInstruction(i, stack);
+        const step = processInstruction(i, stack);
+        if (!i.prim.includes('IF')) {
+            global.steps.push(step);
+        }
     }
 };
 global.applyIF_LEFT = (instruction, parameters, stack) => {
@@ -591,7 +608,10 @@ global.applyIF_LEFT = (instruction, parameters, stack) => {
         branch = 1;
     }
     for (const i of instruction.args[branch].flat()) {
-        processInstruction(i, stack);
+        const step = processInstruction(i, stack);
+        if (!i.prim.includes('IF')) {
+            global.steps.push(step);
+        }
     }
 };
 global.applyIF_NONE = (instruction, parameters, stack) => {
@@ -603,7 +623,10 @@ global.applyIF_NONE = (instruction, parameters, stack) => {
         stack.push(parameters[0].value[0]);
     }
     for (const i of instruction.args[branch].flat()) {
-        processInstruction(i, stack);
+        const step = processInstruction(i, stack);
+        if (!i.prim.includes('IF')) {
+            global.steps.push(step);
+        }
     }
 };
 global.applyIMPLICIT_ACCOUNT = (instruction, parameters, stack) => {

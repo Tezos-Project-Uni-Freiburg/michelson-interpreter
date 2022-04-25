@@ -74,9 +74,10 @@ class State {
 }
 
 class Step {
-    constructor(delta, instruction) {
+    constructor(delta, instruction, stack) {
         this.delta = JSON.parse(JSON.stringify(delta));
         this.instruction = JSON.parse(JSON.stringify(instruction));
+        this.stack = JSON.parse(JSON.stringify(stack));
     }
 }
 

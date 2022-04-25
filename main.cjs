@@ -35,15 +35,18 @@ function main(state, script, parameter, storage) {
     // save state
     global.states.push(JSON.parse(JSON.stringify(global.currentState)));
     // save stack
-    global.steps.push(new Step(new Delta([], [stack[0]]), [parameterType, storageType]));
+    global.steps.push(new Step(new Delta([], [stack[0]]), [parameterType, storageType], stack));
 
     // start iterating
     for (const i of instructions) {
-        processInstruction(i, stack);
+        const step = processInstruction(i, stack);
+        if (!i.prim.includes('IF')) {
+            global.steps.push(step);
+        }
     }
 
     // examine parameter
-    console.dir(stack.reverse(), { depth: null });
+    console.log(JSON.stringify(global.steps));
 }
 
 // test run:
