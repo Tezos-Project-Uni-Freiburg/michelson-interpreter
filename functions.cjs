@@ -4,7 +4,7 @@
 // const { unstable } = require("jshint/src/options");
 const assert = require('assert').strict;
 const { serialize, deserialize } = require('@ungap/structured-clone');
-const { Data, Delta, State, Step } = require('./types.cjs');
+const { Data, Delta, State, Step, CustomError } = require('./types.cjs');
 const base58check = require('base58check');
 const sha256 = require('js-sha256').sha256;
 const sha512 = require('js-sha512').sha512;
@@ -23,7 +23,7 @@ function getInstructionParameters(requirements, stack) {
                                        previousValue > currentValue.length ? previousValue
                                        : currentValue.length, 0);
         if (reqSize > stack.length) {
-            throw ('not enough elements in the stack');
+            throw new CustomError('not enough elements in the stack', {requirements});
         }
         const reqElems = stack.slice(-reqSize).reverse();
         for (let i = 0; i < requirements[1].length; i++) {
@@ -33,24 +33,24 @@ function getInstructionParameters(requirements, stack) {
             }
         }
         if (!flag) {
-            throw ('stack elements and opcode req does not match');
+            throw new CustomError('stack elements and opcode req does not match', {requirements});
         }
     } else if (requirements.length == 2 && requirements[1][0] === null) {
         return [null];
     } else {
         let reqSize = requirements[1].length;
         if (reqSize > stack.length) {
-            throw ('not enough elements in the stack');
+            throw new CustomError('not enough elements in the stack', {requirements});
         }
         const reqElems = stack.slice(-reqSize).reverse();
         if (requirements[1].every(e => e === "SAME")) {
             const types = new Set();
             reqElems.forEach(e => types.add(e.prim));
             if (types.size != 1) {
-                throw('top elements are not of same type');
+                throw new CustomError('top elements are not of same type', {requirements});
             }
         } else if (requirements[1].every(x => x.length > 0) && !requirements[1].every((x, i) => x == reqElems[i].prim)) {
-            throw ('stack elements and opcode req does not match');
+            throw new CustomError('stack elements and opcode req does not match', {requirements});
         }
         return reqElems;
     }
@@ -146,7 +146,6 @@ function getInstructionRequirements(instruction) {
             requirements.push(false, ['list']);
             break;
         case 'IF_LEFT':
-        case 'LOOP_LEFT':
             requirements.push(false, ['or']);
             break;
         case 'IF_NONE':
@@ -222,7 +221,7 @@ function getInstructionRequirements(instruction) {
                               ['', 'option', 'big_map']]);
             break;
         default:
-            throw ('unknown instruction type '.concat(instruction));
+            throw new CustomError('unknown instruction type '.concat(instruction), {});
     }
     return requirements;
 }
@@ -349,7 +348,7 @@ global.applyCOMPARE = (instruction, parameters, stack) => {
     // console.dir(instruction, { depth: null });
     // console.dir(parameters, { depth: null });
     if (!parameters[0].attributes.includes("C") || !parameters[1].attributes.includes("C")) {
-        throw("can't compare non-Comparable types");
+        throw new CustomError("can't compare non-Comparable types", {instruction, parameters});
     }
     switch (parameters[0].prim) {
         case "nat":
@@ -368,7 +367,7 @@ global.applyCOMPARE = (instruction, parameters, stack) => {
             }
             return r;
         default:
-            throw("COMPARE not implemented for non-numerical types");
+            throw new CustomError("COMPARE not implemented for non-numerical types", {instruction, parameters});
     }
 };
 global.applyCONCAT = (instruction, parameters, stack) => {
@@ -378,6 +377,7 @@ global.applyCONCAT = (instruction, parameters, stack) => {
                         ]);
     } else {
         // Not implemented
+        throw new CustomError('CONCAT for list not implemented', {instruction, parameters});
     }
 };
 global.applyCONS = (instruction, parameters, stack) => {
@@ -398,7 +398,7 @@ global.applyCREATE_CONTRACT = (instruction, parameters, stack) => {
 global.applyDIG = (instruction, parameters, stack) => {
     if (instruction.args[0].int != 0) {
         if (instruction.args[0].int > stack.length - 1) {
-            throw('not enough elements in the stack');
+            throw new CustomError('not enough elements in the stack', {instruction, parameters});
         }
         arrayMoveMutable(stack, stack.length - 1 - instruction.args[0].int, stack.length - 1);
     }
@@ -407,7 +407,7 @@ global.applyDIG = (instruction, parameters, stack) => {
 global.applyDIP = (instruction, parameters, stack) => {
     const n = instruction.args.length > 1 ? parseInt(instruction.args[0].int) : 1;
     if (n + 1 > stack.length) {
-        throw('not enough elements in stack');
+        throw new CustomError('not enough elements in stack', {instruction, parameters});
     }
     const p = stack.splice(stack.length - n);
     processInstruction(instruction.args[0], stack);
@@ -416,7 +416,7 @@ global.applyDIP = (instruction, parameters, stack) => {
 global.applyDROP = (instruction, parameters, stack) => {
     const n = instruction.hasOwnProperty('args') ? parseInt(instruction.args[0].int) : 1;
     if (n > stack.length) {
-        throw('not enough elements in stack');
+        throw new CustomError('not enough elements in stack', {instruction, parameters});
     }
     if (n != 0) {
         stack.splice(stack.length - n);
@@ -429,7 +429,7 @@ global.applyDUG = (instruction, parameters, stack) => {
         return null;
     }
     if (n >= stack.length) {
-        throw('not enough elements in stack');
+        throw new CustomError('not enough elements in stack', {instruction, parameters});
     }
     stack.splice(stack.length - 1 - n, 0, stack[stack.length - 1]);
     stack.pop();
@@ -439,10 +439,10 @@ global.applyDUP = (instruction, parameters, stack) => {
     // Working for now but doesn't deep clone as Data
     const n = instruction.hasOwnProperty('args') ? parseInt(instruction.args[0].int) : 1;
     if (n === 0) {
-        throw("non-allowed value for " + instruction.prim + ": " + instruction.args);
+        throw new CustomError("non-allowed value for " + instruction.prim + ": " + instruction.args, {instruction, parameters});
     }
     if (n > stack.length) {
-        throw("not enough elements in the stack");
+        throw new CustomError("not enough elements in the stack", {instruction, parameters});
     }
     return deserialize(serialize(stack[stack.length - n]));
 };
@@ -494,23 +494,28 @@ global.applyEDIV = (instruction, parameters, stack) => {
 };
 global.applyEMPTY_BIG_MAP = (instruction, parameters, stack) => {
     if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
-        throw("kty is not comparable");
+        throw new CustomError("kty is not comparable", {instruction, parameters});
     } else if (["operation", "big_map"].includes(instruction.args[1].prim)) {
-        throw("vty is " + instruction.args[1].prim);
+        throw new CustomError("vty is " + instruction.args[1].prim, {instruction, parameters});
     }
-    return new Data("big_map", [instruction.args[0].prim, instruction.args[1].prim]);
+    const output = new Data("big_map", [new Map()]);
+    output.keyType = instruction.args[0];
+    output.valueType = instruction.args[1];
+    return output;
 };
 global.applyEMPTY_MAP = (instruction, parameters, stack) => {
     if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
-        throw("kty is not comparable");
+        throw new CustomError("kty is not comparable", {instruction, parameters});
     }
     return new Data("map", [instruction.args[0].prim, instruction.args[1].prim]);
 };
 global.applyEMPTY_SET = (instruction, parameters, stack) => {
     if (!new Data(instruction.args[0].prim).attributes.includes("C")) {
-        throw("kty is not comparable");
+        throw new CustomError("kty is not comparable", {instruction, parameters});
     }
-    return new Data("set", [instruction.args[0].prim]);
+    const output = new Data("set", [new Set()]);
+    output.setType = instruction.args[0];
+    return output;
 };
 global.applyEQ = (instruction, parameters, stack) => {
     const result = new Data("bool", []);
@@ -527,9 +532,9 @@ global.applyEXEC = (instruction, parameters, stack) => {
 };
 global.applyFAILWITH = (instruction, parameters, stack) => {
     if (!stack[stack.length - 1].attributes.includes("PA")) {
-        throw("FAILWITH got non-packable top element");
+        throw new CustomError("FAILWITH got non-packable top element", {instruction, parameters});
     } else {
-        throw("got FAILWITH, top element of the stack: " + stack[stack.length - 1].value);
+        throw new CustomError("got FAILWITH, top element of the stack: " + stack[stack.length - 1].value, {instruction, parameters});
     }
 };
 global.applyGE = (instruction, parameters, stack) => {
@@ -667,9 +672,12 @@ global.applyLE = (instruction, parameters, stack) => {
 };
 global.applyLEFT = (instruction, parameters, stack) => {
     if (instruction.args[0].prim !== parameters[0].prim) {
-        throw("given type and stack elements type doesn't match");
+        throw new CustomError("given type and stack elements type doesn't match", {instruction, parameters});
     } else {
-        return new Data("or", ["Left", parameters[0]]);
+        const output = new Data("or", [parameters[0]]);
+        output.orValue = "Left";
+        output.orType = [parameters[0].prim];
+        return output;
     }
 };
 global.applyLOOP = (instruction, parameters, stack) => {
@@ -684,7 +692,7 @@ global.applyLSL = (instruction, parameters, stack) => {
     const f = parseInt(parameters[0].value[0]);
     const s = parseInt(parameters[1].value[0]);
     if (s > 256) {
-        throw('s is larger than 256');
+        throw new CustomError('s is larger than 256', {instruction, parameters});
     }
     return new Data("nat", [(f << s).toString()]);
 };
@@ -692,7 +700,7 @@ global.applyLSR = (instruction, parameters, stack) => {
     const f = parseInt(parameters[0].value[0]);
     const s = parseInt(parameters[1].value[0]);
     if (s > 256) {
-        throw('s is larger than 256');
+        throw new CustomError('s is larger than 256', {instruction, parameters});
     }
     return new Data("nat", [(f >> s).toString()]);
 };
@@ -710,8 +718,17 @@ global.applyMAP = (instruction, parameters, stack) => {
     return null;
 };
 global.applyMEM = (instruction, parameters, stack) => {
-    // Not implemented yet
-    return null;
+    const output = new Data("bool", []);
+    if ((['big_map', 'map'].includes(parameters[1].prim) && parameters[1].keyType !== parameters[0].prim) ||
+        parameters[1].setType !== parameters[0].prim) {
+        throw new CustomError('key or element type does not match', {instruction, parameters});
+    }
+    if (parameters[1].value[0].has(parameters[0].value[0])) {
+        output.value.push("True");
+    } else {
+        output.value.push("False");
+    }
+    return output;
 };
 global.applyMUL = (instruction, parameters, stack) => {
     const z1 = parseInt(parameters[0].value[0]);
@@ -745,7 +762,7 @@ global.applyNEQ = (instruction, parameters, stack) => {
 };
 global.applyNIL = (instruction, parameters, stack) => {
     if (!instruction.hasOwnProperty('args')) {
-        throw('type of list is not declared');
+        throw new CustomError('type of list is not declared', {instruction, parameters});
     }
     const output = new Data('list', [[]]);
     output.listType = instruction.args[0];
@@ -753,7 +770,7 @@ global.applyNIL = (instruction, parameters, stack) => {
 };
 global.applyNONE = (instruction, parameters, stack) => {
     if (!instruction.hasOwnProperty('args')) {
-        throw('type of option is not declared');
+        throw new CustomError('type of option is not declared', {instruction, parameters});
     }
     const output = new Data('option', [instruction.args[0].prim]);
     output.optionValue = "None";
@@ -788,7 +805,7 @@ global.applyPACK = (instruction, parameters, stack) => {
 };
 global.applyPAIR = (instruction, parameters, stack) => {
     if (instruction.hasOwnProperty('args')) {
-        throw("PAIR 'n' case hasn't been implemented");
+        throw new CustomError("PAIR 'n' case hasn't been implemented", {instruction, parameters});
     }
     return new Data('pair', [parameters[0], parameters[1]]);
 };
@@ -825,9 +842,12 @@ global.applyPUSH = (instruction, parameters, stack) => {
 };
 global.applyRIGHT = (instruction, parameters, stack) => {
     if (instruction.args[0].prim !== parameters[0].prim) {
-        throw("given type and stack elements type doesn't match");
+        throw new CustomError("given type and stack elements type doesn't match", {instruction, parameters});
     } else {
-        return new Data("or", ["Right", parameters[0]]);
+        const output = new Data("or", [parameters[0]]);
+        output.orValue = "Right";
+        output.orType = [parameters[0].prim];
+        return output;
     }
 };
 global.applySELF = (instruction, parameters, stack) => {
@@ -850,7 +870,7 @@ global.applySHA512 = (instruction, parameters, stack) => {
 };
 global.applySIZE = (instruction, parameters, stack) => {
     if (['list', 'set', 'map'].includes(parameters[0].prim)) {
-        throw('SIZE not implemented for list, set, map');
+        throw new CustomError('SIZE not implemented for list, set, map', {instruction, parameters});
     }
     return new Data('nat', [parameters[0].value[0].length.toString()]);
 };
@@ -871,9 +891,9 @@ global.applySLICE = (instruction, parameters, stack) => {
 };
 global.applySOME = (instruction, parameters, stack) => {
     if (!instruction.hasOwnProperty('args')) {
-        throw('type of option is not declared');
+        throw new CustomError('type of option is not declared', {instruction, parameters});
     } else if (instruction.args[0].prim !== parameters[0].prim) {
-        throw("stack value and option type doesn't match");
+        throw new CustomError("stack value and option type doesn't match", {instruction, parameters});
     }
     const output = new Data('option', [parameters[0]]);
     output.optionValue = 'Some';
@@ -887,7 +907,7 @@ global.applySOURCE = (instruction, parameters, stack) => {
 global.applySUB = (instruction, parameters, stack) => {
     if ([parameters[0].prim, parameters[1].prim].includes("timestamp") &&
         (/[a-z]/i.test(parameters[0].value[0]) || /[a-z]/i.test(parameters[1].value[0]))) {
-        throw('SUB not implemented for timestamps in RFC3339 notation');
+        throw new CustomError('SUB not implemented for timestamps in RFC3339 notation', {instruction, parameters});
     }
 
     const z1 = parseInt(parameters[0].value[0]);
@@ -931,13 +951,22 @@ global.applyUNPACK = (instruction, parameters, stack) => {
 };
 global.applyUPDATE = (instruction, parameters, stack) => {
     if (parameters[1].prim === "bool") {
+        if (parameters[0].prim !== parameters[2].setType) {
+            throw new CustomError('set type does not match', {instruction, parameters});
+        }
         if (JSON.parse(parameters[1].value[0].toLowerCase())) {
             parameters[2].value[0].add(parameters[2].value);
         } else {
             parameters[2].value[0].delete(parameters[2].value);
         }
     } else {
+        if (parameters[0].prim !== parameters[2].keyType) {
+            throw new CustomError('key type does not match', {instruction, parameters});
+        }
         if (parameters[1].optionValue === 'Some') {
+            if (parameters[1].optionType[0] !== parameters[2].valueType) {
+                throw new CustomError('value type does not match', {instruction, parameters});
+            }
             parameters[2].value[0].set(parameters[0].value[0], parameters[1]);
         } else if (parameters[2].value[0].has(parameters[0].value[0])) {
             parameters[2].value[0].delete(parameters[0].value[0]);
@@ -969,7 +998,7 @@ global.parseBIG_MAP = (args, value) => {
 
     const params = value.match(re1);
     if (params === null) {
-        throw("input doesn't match with the specified types");
+        throw new CustomError("input doesn't match with the specified types", {args, value});
     }
     const kv = [];
     params[1].split(';').forEach(e => kv.push(e.trim()));
@@ -979,7 +1008,7 @@ global.parseBIG_MAP = (args, value) => {
     for (const i of kv) {
         const r = i.match(re2);
         if (r === null) {
-            throw("input doesn't match with the specified types");
+            throw new CustomError("input doesn't match with the specified types", {args, value});
         }
         // r[1] is the key, and r[2] is the value
         switch(output.keyType.prim) {
@@ -991,7 +1020,7 @@ global.parseBIG_MAP = (args, value) => {
             case 'signature':
             case 'bool':
                 if (output.value[0].has(r[1])) {
-                    throw('key already present in map');
+                    throw new CustomError('key already present in map', {args, value});
                 }
                 break;
             case 'string':
@@ -1000,14 +1029,14 @@ global.parseBIG_MAP = (args, value) => {
             case 'key_hash':
                 r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
                 if (output.value[0].has(r[1])) {
-                    throw('key already present in map');
+                    throw new CustomError('key already present in map', {args, value});
                 }
                 break;
             default:
-                throw('not implemented');
+                throw new CustomError('not implemented', {args, value});
         }
-        const value = global["parse" + output.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
-        output.value[0].set(r[1], value);
+        const v = global["parse" + output.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
+        output.value[0].set(r[1], v);
     }
     return output;
 };
@@ -1018,7 +1047,7 @@ global.parseBYTES = (args, value) => {
     const re = /0x([a-fA-F0-9]+)/;
     const r = value.match(re);
     if (r === null) {
-        throw("can't parse");
+        throw new CustomError("can't parse", {args, value});
     }
     return new Data('bytes', [r[1]]);
 };
@@ -1039,7 +1068,7 @@ global.parseLIST = (args, value) => {
 
     const params = value.match(re1);
     if (params === null) {
-        throw("input doesn't match with the specified types");
+        throw new CustomError("input doesn't match with the specified types", {args, value});
     }
     const elements = [];
     params[1].split(';').forEach(e => elements.push(e.trim()));
@@ -1049,10 +1078,10 @@ global.parseLIST = (args, value) => {
     for (const i of elements) {
         const r = i.match(re2);
         if (r === null) {
-            throw("input doesn't match with the specified types");
+            throw new CustomError("input doesn't match with the specified types", {args, value});
         }
-        const value = global["parse" + output.listType.prim.toUpperCase()].call(null, args[0], r[1]);
-        output.value[0].push(value);
+        const v = global["parse" + output.listType.prim.toUpperCase()].call(null, args[0], r[1]);
+        output.value[0].push(v);
     }
     return output;
 };
@@ -1065,7 +1094,7 @@ global.parseMAP = (args, value) => {
 
     const params = value.match(re1);
     if (params === null) {
-        throw("input doesn't match with the specified types");
+        throw new CustomError("input doesn't match with the specified types", {args, value});
     }
     const kv = [];
     params[1].split(';').forEach(e => kv.push(e.trim()));
@@ -1075,7 +1104,7 @@ global.parseMAP = (args, value) => {
     for (const i of kv) {
         const r = i.match(re2);
         if (r === null) {
-            throw("input doesn't match with the specified types");
+            throw new CustomError("input doesn't match with the specified types", {args, value});
         }
         // r[1] is the key, and r[2] is the value
         switch(output.keyType.prim) {
@@ -1087,7 +1116,7 @@ global.parseMAP = (args, value) => {
             case 'signature':
             case 'bool':
                 if (output.value[0].has(r[1])) {
-                    throw('key already present in map');
+                    throw new CustomError('key already present in map', {args, value});
                 }
                 break;
             case 'string':
@@ -1096,14 +1125,14 @@ global.parseMAP = (args, value) => {
             case 'key_hash':
                 r[1] = r[1].replace(/^"(.+(?="$))"$/, '$1');
                 if (output.value[0].has(r[1])) {
-                    throw('key already present in map');
+                    throw new CustomError('key already present in map', {args, value});
                 }
                 break;
             default:
-                throw('not implemented');
+                throw new CustomError('not implemented', {args, value});
         }
-        const value = global["parse" + output.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
-        output.value[0].set(r[1], value);
+        const v = global["parse" + output.valueType.prim.toUpperCase()].call(null, args[1].args, r[2]);
+        output.value[0].set(r[1], v);
     }
     return output;
 };
@@ -1120,7 +1149,7 @@ global.parseOPTION = (args, value) => {
     output.optionType = [args[0].prim];
     const params = value.match(re);
     if (params === null) {
-        throw("input doesn't match with the specified types");
+        throw new CustomError("input doesn't match with the specified types", {args, value});
     }
     if (params[1] === undefined && params[0].includes("None")) {
         output.optionValue = 'None';
@@ -1136,7 +1165,7 @@ global.parseOR = (args, value) => {
     const params = value.match(re);
     const output = new Data('or', []);
     if (params === null) {
-        throw("input doesn't match with the specified types");
+        throw new CustomError("input doesn't match with the specified types", {args, value});
     }
     output.orValue = params[1];
     output.orType = args;
@@ -1149,7 +1178,7 @@ global.parsePAIR = (args, value) => {
     const output = new Data('pair', []);
     const params = value.match(re);
     if (params === null) {
-        throw("input doesn't match with the specified types");
+        throw new CustomError("input doesn't match with the specified types", {args, value});
     }
     output.value.push(global["parse" + args[0].prim.toUpperCase()].call(null, args[0].args, params[1]));
     output.value.push(global["parse" + args[1].prim.toUpperCase()].call(null, args[1].args, params[2]));
@@ -1162,7 +1191,7 @@ global.parseSET = (args, value) => {
 
     const params = value.match(re);
     if (params === null) {
-        throw("input doesn't match with the specified types");
+        throw new CustomError("input doesn't match with the specified types", {args, value});
     }
     const elements = [];
     params[1].split(';').forEach(e => elements.push(e.trim()));
@@ -1179,7 +1208,7 @@ global.parseSET = (args, value) => {
             case 'signature':
             case 'bool':
                 if (output.value[1].has(elements[i])) {
-                    throw('key already present in map');
+                    throw new CustomError('key already present in map', {args, value});
                 }
                 break;
             case 'string':
@@ -1188,11 +1217,11 @@ global.parseSET = (args, value) => {
             case 'key_hash':
                 elements[i] = elements[i].replace(/^"(.+(?="$))"$/, '$1');
                 if (output.value[1].has(elements[i])) {
-                    throw('key already present in map');
+                    throw new CustomError('key already present in map', {args, value});
                 }
                 break;
             default:
-                throw('not implemented');
+                throw new CustomError('not implemented', {args, value});
         }
         output.value[1].add(elements[i]);
     }

@@ -42,7 +42,7 @@ class Data {
                 this.attributes = ["D"];
                 break;
             default:
-                throw ('unknown data type '.concat(this.prim));
+                throw new CustomError('unknown data type '.concat(this.prim), [prim, value, name]);
         }
         // this.value = JSON.parse(JSON.stringify(value));
         this.value = value;
@@ -81,7 +81,18 @@ class Step {
     }
 }
 
+class CustomError extends Error {
+    constructor(message, errorExtraParams) {
+        super(message);
+        this._errorExtraParams = errorExtraParams;
+    }
+    get errorExtraParams() {
+        return this._errorExtraParams;
+    }
+}
+
 exports.Step = Step;
 exports.Data = Data;
 exports.State = State;
 exports.Delta = Delta;
+exports.CustomError = CustomError;
