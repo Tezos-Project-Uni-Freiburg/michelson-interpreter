@@ -6,8 +6,10 @@ const assert = require('assert').strict;
 const { serialize, deserialize } = require('@ungap/structured-clone');
 const { Data, Delta, State, Step, CustomError } = require('./types.cjs');
 const base58check = require('base58check');
-const sha256 = require('js-sha256').sha256;
-const sha512 = require('js-sha512').sha512;
+const { sha256 } = require("ethereum-cryptography/sha256");
+const { sha512 } = require("ethereum-cryptography/sha512");
+const { blake2b } = require("ethereum-cryptography/blake2b");
+const { toHex, utf8ToBytes, hexToBytes, bytesToHex, bytesToUtf8 } = require("ethereum-cryptography/utils");
 
 function initialize(parameterType, parameter, storageType, storage) {
     const parameterResult = global["parse" + parameterType.prim.toUpperCase()].call(null, parameterType.args, parameter);
@@ -19,9 +21,7 @@ function initialize(parameterType, parameter, storageType, storage) {
 function getInstructionParameters(requirements, stack) {
     let flag = false;
     if (requirements[0]) {
-        const reqSize = requirements[1].reduce((previousValue, currentValue) =>
-                                       previousValue > currentValue.length ? previousValue
-                                       : currentValue.length, 0);
+        const reqSize = requirements[1].reduce((prev, cur) => prev.length > cur.length ? prev.length : cur.length);
         if (reqSize > stack.length) {
             throw new CustomError('not enough elements in the stack', {requirements});
         }
@@ -81,7 +81,6 @@ function getInstructionRequirements(instruction) {
         case 'APPLY': // TODO: how to figure out ty1, ty2 and ty3?
         case 'BALANCE':
         case 'CHAIN_ID':
-        case 'CONS': // TODO: how to figure out that the ty1 and type of list is the same?
         case 'CREATE_CONTRACT': // TODO
         case 'DIG':
         case 'DIP':
@@ -93,6 +92,8 @@ function getInstructionRequirements(instruction) {
         case 'EMPTY_SET':
         case 'FAILWITH': // TODO: actually FAILWITH takes any type that's packable, need to figure out
         case 'LAMBDA':
+        case 'LOOP':
+        case 'LOOP_LEFT':
         case 'NIL':
         case 'NONE':
         case 'NOW':
@@ -108,6 +109,7 @@ function getInstructionRequirements(instruction) {
         case 'BLAKE2B':
         case 'SHA256':
         case 'SHA512':
+        case 'UNPACK':
             requirements.push(false, ['bytes']);
             break;
         case 'CAR':
@@ -120,6 +122,9 @@ function getInstructionRequirements(instruction) {
         case 'CONCAT':
             // TODO: how to figure out that the type of list is either string or bytes?
             requirements.push(true, [['string', 'string'], ['bytes', 'bytes'], ['list']]);
+            break;
+        case 'CONS':
+            requirements.push(false, ['', 'list']);
             break;
         case 'CONTRACT':
             requirements.push(false, ['address']);
@@ -139,7 +144,6 @@ function getInstructionRequirements(instruction) {
             requirements.push(false, ['key']);
             break;
         case 'IF':
-        case 'LOOP':
             requirements.push(false, ['bool']);
             break;
         case 'IF_CONS':
@@ -212,9 +216,6 @@ function getInstructionRequirements(instruction) {
             break;
         case 'TRANSFER_TOKENS':
             requirements.push(false, ['', 'mutez', 'contract']);
-            break;
-        case 'UNPACK':
-            requirements.push(false, ['', 'bytes']);
             break;
         case 'UPDATE':
             requirements.push(true, [['', 'bool', 'set'], ['', 'option', 'map'],
@@ -299,10 +300,7 @@ global.applyADD = (instruction, parameters, stack) => {
     }
 };
 global.applyADDRESS = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("address", [
-                        "some_address_value"
-                    ]);
+    return parameters[0].value[0];
 };
 global.applyAMOUNT = (instruction, parameters, stack) => {
     return new Data("mutez", [global.currentState.amount.toString()]);
@@ -323,12 +321,10 @@ global.applyAPPLY = (instruction, parameters, stack) => {
     return new Data("lambda", [""]);
 };
 global.applyBALANCE = (instruction, parameters, stack) => {
-    // Not implemented, should be taken from state?
-    return new Data("mutez", ["0"]);
+    return new Data("mutez", [global.currentState.amount.toString()]);
 };
 global.applyBLAKE2B = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("bytes", ["0x"]);
+    return new Data("bytes", [toHex(blake2b(utf8ToBytes(parameters[0].value[0])))]);
 };
 global.applyCAR = (instruction, parameters, stack) => {
     return parameters[0].value[0];
@@ -371,29 +367,37 @@ global.applyCOMPARE = (instruction, parameters, stack) => {
     }
 };
 global.applyCONCAT = (instruction, parameters, stack) => {
+    var value = '';
     if (parameters[0].prim != "list") {
-        return new Data(parameters[0].prim == "string" ? "string" : "bytes", [
-                            parameters[0].value[0] + parameters[1].value[0]
-                        ]);
+        value = parameters[0].value[0] + parameters[1].value[0];
+        return new Data(parameters[0].prim == "string" ? "string" : "bytes", [value]);
     } else {
-        // Not implemented
-        throw new CustomError('CONCAT for list not implemented', {instruction, parameters});
+        for (const i of parameters[0].value[0]) {
+            value += i.value[0];
+        }
+        return new Data(parameters[0].listType.prim == "string" ? "string" : "bytes", [value]);
     }
 };
 global.applyCONS = (instruction, parameters, stack) => {
-    // Not implemented for the moment
-    return new Data("list", []);
+    if (parameters[0].prim !== parameters[1].listType.prim) {
+        throw new CustomError("list type and element type are not same", {instruction, parameters});
+    } else {
+        parameters[1].value[0].unshift(parameters[0]);
+        return parameters[1];
+    }
 };
 global.applyCONTRACT = (instruction, parameters, stack) => {
     // Not implemented completely
-    const output = new Data("option", [parameters[0]]);
+    const c = new Data("contract", [parameters[0]]);
+    c.contractType = instruction.args[0];
+    const output = new Data("option", [c]);
     output.optionValue = "Some";
     output.optionType = ["contract"];
     return output;
 };
 global.applyCREATE_CONTRACT = (instruction, parameters, stack) => {
     // Not implemented
-    return new Data("pair", []);
+    return [new Data('operation', []), new Data('address', [])];
 };
 global.applyDIG = (instruction, parameters, stack) => {
     if (instruction.args[0].int != 0) {
@@ -635,8 +639,9 @@ global.applyIF_NONE = (instruction, parameters, stack) => {
     }
 };
 global.applyIMPLICIT_ACCOUNT = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("contract", [new Data("unit", [])]);
+    const output = new Data("contract", [parameters[0]]);
+    output.contractType = new Data("unit", ["Unit"]);
+    return output;
 };
 global.applyINT = (instruction, parameters, stack) => {
     return new Data("int", [parameters[0].value[0]]);
@@ -671,22 +676,64 @@ global.applyLE = (instruction, parameters, stack) => {
     return result;
 };
 global.applyLEFT = (instruction, parameters, stack) => {
-    if (instruction.args[0].prim !== parameters[0].prim) {
-        throw new CustomError("given type and stack elements type doesn't match", {instruction, parameters});
-    } else {
-        const output = new Data("or", [parameters[0]]);
-        output.orValue = "Left";
-        output.orType = [parameters[0].prim];
-        return output;
-    }
+    const output = new Data("or", [parameters[0]]);
+    output.orValue = "Left";
+    output.orType = [parameters[0].prim, instruction.args[0].prim];
+    return output;
 };
 global.applyLOOP = (instruction, parameters, stack) => {
-    // Not implemented yet
+    var top = stack.pop();
+    var v = false;
+    if (top.prim !== 'bool') {
+        throw new CustomError('top element of stack is not bool', {instruction, parameters});
+    } else {
+        v = JSON.parse(top.value[0].toLowerCase());
+    }
+    while (v) {
+        for (const i of instruction.args.flat()) {
+            const step = processInstruction(i, stack);
+            if (!i.prim.includes('IF')) {
+                global.steps.push(step);
+            }
+        }
+        top = stack.pop();
+        if (top.prim !== 'bool') {
+            throw new CustomError('top element of stack is not bool', {instruction, parameters});
+        } else {
+            v = JSON.parse(top.value[0].toLowerCase());
+        }
+    }
     return null;
 };
 global.applyLOOP_LEFT = (instruction, parameters, stack) => {
-    // Not implemented yet
-    return null;
+    var top = stack.pop();
+    var v = false;
+    if (top.prim !== 'or') {
+        throw new CustomError('top element of stack is not or', {instruction, parameters});
+    } else if (top.orValue === 'Right') {
+        stack.push(top);
+        return null;
+    } else {
+        v = true;
+    }
+    while (v) {
+        for (const i of instruction.args.flat()) {
+            const step = processInstruction(i, stack);
+            if (!i.prim.includes('IF')) {
+                global.steps.push(step);
+            }
+        }
+        top = stack.pop();
+        v = false;
+        if (top.prim !== 'or') {
+            throw new CustomError('top element of stack is not or', {instruction, parameters});
+        } else if (top.orValue === 'Right') {
+            stack.push(top);
+            return null;
+        } else {
+            v = true;
+        }
+    }
 };
 global.applyLSL = (instruction, parameters, stack) => {
     const f = parseInt(parameters[0].value[0]);
@@ -714,8 +761,20 @@ global.applyLT = (instruction, parameters, stack) => {
     return result;
 };
 global.applyMAP = (instruction, parameters, stack) => {
-    // Not implemented yet
-    return null;
+    const len = parameters[0].value[0].length;
+    const newList = [];
+    for (let i = 0; i < len; i++) {
+        stack.push(parameters[0].value[0].shift());
+        for (const j of instruction.args.flat()) {
+            const step = processInstruction(j, stack);
+            if (!j.prim.includes('IF')) {
+                global.steps.push(step);
+            }
+        }
+        newList.push(stack.pop());
+    }
+    parameters[0].value[0] = newList;
+    return parameters[0];
 };
 global.applyMEM = (instruction, parameters, stack) => {
     const output = new Data("bool", []);
@@ -801,7 +860,10 @@ global.applyOR = (instruction, parameters, stack) => {
 };
 global.applyPACK = (instruction, parameters, stack) => {
     // Not implemented
-    return new Data('bytes', []);
+    if (!parameters[0].attributes.includes('PA')) {
+        throw new CustomError("can't PACK non-packable type", {instruction, parameters});
+    }
+    return new Data('bytes', [toHex(utf8ToBytes(JSON.stringify(serialize(parameters[0].value))))]);
 };
 global.applyPAIR = (instruction, parameters, stack) => {
     if (instruction.hasOwnProperty('args')) {
@@ -812,6 +874,17 @@ global.applyPAIR = (instruction, parameters, stack) => {
 global.applyPUSH = (instruction, parameters, stack) => {
     const output = new Data(instruction.args[0].prim, []);
     switch (instruction.args[0].prim) {
+        case 'list':
+            output.value.push([]);
+            output.listType = instruction.args[0].args[0];
+            for (let i = 1; i < instruction.args.length; i++) {
+                const v0 = new Data(output.listType.prim, [instruction.args[i].int ||
+                                                              instruction.args[i].string ||
+                                                              instruction.args[i].bytes ||
+                                                              instruction.args[i].prim]);
+                output.value[0].push(v0);
+            }
+            break;
         case 'option':
             output.optionValue = instruction.args[1].prim;
             output.optionType = [instruction.args[0].args[0]];
@@ -841,18 +914,16 @@ global.applyPUSH = (instruction, parameters, stack) => {
     return output;
 };
 global.applyRIGHT = (instruction, parameters, stack) => {
-    if (instruction.args[0].prim !== parameters[0].prim) {
-        throw new CustomError("given type and stack elements type doesn't match", {instruction, parameters});
-    } else {
-        const output = new Data("or", [parameters[0]]);
-        output.orValue = "Right";
-        output.orType = [parameters[0].prim];
-        return output;
-    }
+    const output = new Data("or", [parameters[0]]);
+    output.orValue = "Right";
+    output.orType = [instruction.args[0].prim, parameters[0].prim];
+    return output;
 };
 global.applySELF = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("contract", []);
+    // Not implemented completely
+    const output = new Data("contract", [new Data("address", [global.currentState.address])]);
+    output.contractType = "Unit";
+    return output;
 };
 global.applySENDER = (instruction, parameters, stack) => {
     // Not implemented correctly/completely
@@ -863,29 +934,29 @@ global.applySET_DELEGATE = (instruction, parameters, stack) => {
     return new Data('operation', []);
 };
 global.applySHA256 = (instruction, parameters, stack) => {
-    return new Data("bytes", [sha256(parameters[0].value[0]).toString('hex')]);
+    return new Data("bytes", [toHex(sha256(utf8ToBytes(parameters[0].value[0])))]);
 };
 global.applySHA512 = (instruction, parameters, stack) => {
-    return new Data("bytes", [sha512(parameters[0].value[0]).toString('hex')]);
+    return new Data("bytes", [toHex(sha256(utf8ToBytes(parameters[0].value[0])))]);
 };
 global.applySIZE = (instruction, parameters, stack) => {
-    if (['list', 'set', 'map'].includes(parameters[0].prim)) {
-        throw new CustomError('SIZE not implemented for list, set, map', {instruction, parameters});
+    if (['set', 'map'].includes(parameters[0].prim)) {
+        return new Data('nat', [parameters[0].value[0].size.toString()]);
+    } else {
+        return new Data('nat', [parameters[0].value[0].length.toString()]);
     }
-    return new Data('nat', [parameters[0].value[0].length.toString()]);
 };
 global.applySLICE = (instruction, parameters, stack) => {
-    // Not implemented for bytes
     const offset = parseInt(parameters[0].value[0]);
     const len = parseInt(parameters[1].value[0]);
     const str = parameters[2].value[0];
     const output = new Data('option', []);
-    output.optionType = ['string'];
+    output.optionType = [parameters[2].prim];
     if (str.length == 0 || offset >= str.length || offset + len > str.length) {
         output.optionValue = 'None';
     } else if (offset < str.length && offset + len <= str.length) {
         output.optionValue = 'Some';
-        output.value.push(new Data('string', [str.slice(offset, offset + len)]));
+        output.value.push(new Data(parameters[2].prim, [str.slice(offset, offset + len)]));
     }
     return output;
 };
@@ -901,8 +972,9 @@ global.applySOME = (instruction, parameters, stack) => {
     return output;
 };
 global.applySOURCE = (instruction, parameters, stack) => {
-    // Not implemented
-    return new Data("address", []);
+    // Not implemented completely
+    const output = new Data("address", [global.currentState.address]);
+    return output;
 };
 global.applySUB = (instruction, parameters, stack) => {
     if ([parameters[0].prim, parameters[1].prim].includes("timestamp") &&
@@ -943,10 +1015,19 @@ global.applyUNIT = (instruction, parameters, stack) => {
     return new Data("unit", ["Unit"]);
 };
 global.applyUNPACK = (instruction, parameters, stack) => {
-    // Not implemented
+    // Type check is not being done here
+    const v = deserialize(JSON.parse(bytesToUtf8(hexToBytes(parameters[0].value[0]))));
     const output = new Data('option', []);
-    output.optionValue = 'None';
+    const i = new Data(instruction.args[0].prim, []);
+    if (instruction.args[0].hasOwnProperty('args') && instruction.args[0].args.map(x => x.prim).every((e, index) => (e === v[index].prim))) {
+        i.value = v;
+    } else {
+        i.value = v;
+    }
+    // Not implemented
+    output.optionValue = 'Some';
     output.optionType = [instruction.args[0].prim];
+    output.value.push(i);
     return output;
 };
 global.applyUPDATE = (instruction, parameters, stack) => {
@@ -1061,8 +1142,7 @@ global.parseKEY_HASH = (args, value) => {
     return new Data('key_hash', [value.replace(/^"(.+(?="$))"$/, '$1')]);
 };
 global.parseLIST = (args, value) => {
-    const re1 = /\s*\{\s*((?:Elt\s+.+\s*;\s*)+(?:Elt\s+.+\s*)?)\}\s*/;
-    const re2 = /Elt\s+(.*)/;
+    const re1 = /\s*\{((?:.+\s*;)+(?:.+\s*)?)\s*\}\s*/;
     const output = new Data('list', [[]]);
     output.listType = args[0];
 
@@ -1076,11 +1156,7 @@ global.parseLIST = (args, value) => {
         elements.pop();
     }
     for (const i of elements) {
-        const r = i.match(re2);
-        if (r === null) {
-            throw new CustomError("input doesn't match with the specified types", {args, value});
-        }
-        const v = global["parse" + output.listType.prim.toUpperCase()].call(null, args[0], r[1]);
+        const v = global["parse" + output.listType.prim.toUpperCase()].call(null, args[0], i);
         output.value[0].push(v);
     }
     return output;
@@ -1144,7 +1220,7 @@ global.parseNAT = (args, value) => {
 };
 global.parseOPTION = (args, value) => {
     // Currently no parameter type check is being done
-    const re = /\s*\(\s*(?:(?:Some)\s+([^\s]+)|(?:None)\s*)\s*\)\s*/;
+    const re = /\s*\(\s*(?:(?:Some)\s+(.+)|(?:None)\s*)\s*\)\s*/;
     const output = new Data('option', []);
     output.optionType = [args[0].prim];
     const params = value.match(re);
@@ -1161,7 +1237,7 @@ global.parseOPTION = (args, value) => {
 };
 global.parseOR = (args, value) => {
     // Currently no parameter type check is being done
-    const re = /\s*\(\s*(?:(Left|Right)\s+([^\s]+))\s*\)\s*/;
+    const re = /\s*\(\s*(?:(Left|Right)\s+(.+))\s*\)\s*/;
     const params = value.match(re);
     const output = new Data('or', []);
     if (params === null) {
@@ -1174,7 +1250,7 @@ global.parseOR = (args, value) => {
     return output;
 };
 global.parsePAIR = (args, value) => {
-    const re = /\s*\(\s*Pair\s+((?:\(.+\))|(?:.+))\s+((?:\(.+\))|(?:.+))\s*\)\s*/;
+    const re = /\s*\(\s*Pair\s+((?:\(.+\))|(?:.+?))\s+((?:\(.+\))|(?:.+?))\s*\)\s*/;
     const output = new Data('pair', []);
     const params = value.match(re);
     if (params === null) {
@@ -1187,7 +1263,7 @@ global.parsePAIR = (args, value) => {
 global.parseSET = (args, value) => {
     const re = /\s*\{((?:.+\s*;)+(?:.+\s*)?)\s*\}\s*/;
     const output = new Data('set', [new Set()]);
-    output.value.setType = args[0];
+    output.setType = args[0];
 
     const params = value.match(re);
     if (params === null) {
@@ -1199,7 +1275,7 @@ global.parseSET = (args, value) => {
         elements.pop();
     }
     for (let i = 0; i < elements.length; i++) {
-        switch(output.value.setType.prim) {
+        switch(output.setType.prim) {
             case 'int':
             case 'mutez':
             case 'nat':
@@ -1207,7 +1283,7 @@ global.parseSET = (args, value) => {
             case 'bytes':
             case 'signature':
             case 'bool':
-                if (output.value[1].has(elements[i])) {
+                if (output.value[0].has(elements[i])) {
                     throw new CustomError('key already present in map', {args, value});
                 }
                 break;
@@ -1216,14 +1292,14 @@ global.parseSET = (args, value) => {
             case 'key':
             case 'key_hash':
                 elements[i] = elements[i].replace(/^"(.+(?="$))"$/, '$1');
-                if (output.value[1].has(elements[i])) {
+                if (output.value[0].has(elements[i])) {
                     throw new CustomError('key already present in map', {args, value});
                 }
                 break;
             default:
                 throw new CustomError('not implemented', {args, value});
         }
-        output.value[1].add(elements[i]);
+        output.value[0].add(elements[i]);
     }
     return output;
 };
