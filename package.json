@@ -1,6 +1,6 @@
 {
     "name": "michelson-interpreter",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "description": "Michelson interpreter with step-by-step output",
     "author": {
         "name": "Hasan Berkay Cagir",
