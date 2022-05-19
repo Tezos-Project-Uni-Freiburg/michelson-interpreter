@@ -17,7 +17,7 @@
         "nearley": "^2.20.1",
         "yargs": "^17.5.1"
     },
-    "bin": "main.cjs",
+    "bin": "bin/michelson-interpreter.cjs",
     "private": true,
     "type": "module"
 }

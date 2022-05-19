@@ -1,15 +1,5 @@
 'use strict';
-/* jshint esversion: 11 */
-/* jshint node: true */
-const nearley = require("nearley");
-const fs = require("fs");
 const process = require('process');
-const yargs = require('yargs/yargs');
-const { hideBin } = require('yargs/helpers');
-
-const { Data, Delta, State, Step, CustomError } = require('./types.cjs');
-const { initialize, processInstruction } = require("./functions.cjs");
-
 process.on('uncaughtException', (err, origin) => {
     console.log('Got exception, details below:');
     console.log(err.message);
@@ -33,11 +23,18 @@ process.on('uncaughtException', (err, origin) => {
     // );
 });
 
-const Grammar = require("./michelson-parser/grammar.cjs");
+const nearley = require("nearley");
+const fs = require("fs");
+const yargs = require('yargs/yargs');
+const { hideBin } = require('yargs/helpers');
 
+const { Delta, State, Step } = require('../lib/types.cjs');
+const { initialize, processInstruction } = require("../lib/functions.cjs");
+
+const Grammar = require("../michelson-parser/grammar.cjs");
 const parser = new nearley.Parser(nearley.Grammar.fromCompiled(Grammar));
 
-function main(script, parameter, storage, state) {
+function michelsonInterpreter(script, parameter, storage, state) {
     parser.feed(script);
     if (parser.results.length > 1) {
         console.log("Multiple parsings!");
@@ -74,17 +71,6 @@ function main(script, parameter, storage, state) {
     // examine parameter
     console.log(JSON.stringify(global.steps));
 }
-
-// test run:
-// const script = fs.readFileSync(process.argv[2], 'utf8');
-// const script = fs.readFileSync('/Users/berkay/opcodes_list_iter.tz', 'utf8');
-// const script = fs.readFileSync('/Users/berkay/test.tz', 'utf8');
-// const script = fs.readFileSync('/Users/berkay/opcodes_packunpack.tz', 'utf8');
-// const state = new State(200000, 2000000, 0, "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx", "default", "2022-01-01T00:00:00.000Z", "KT1QuofAgnsWffHzLA7D78rxytJruGHDe7XG");
-// var parameter = 'Unit';
-// var storage = '{"Unit"; "a"}';
-// const args = require('minimist')(process.argv.slice(2));
-// console.log(args);
 
 const argv = yargs(hideBin(process.argv))
     .usage("Usage: $0 [options]")
@@ -148,4 +134,4 @@ const state = new State(argv.account || '',
                         argv.gas_limit || 0,
                         argv.id || 0,
                         argv.timestamp || 0);
-main(script, argv.parameter, argv.storage, state);
+michelsonInterpreter(script, argv.parameter, argv.storage, state);
