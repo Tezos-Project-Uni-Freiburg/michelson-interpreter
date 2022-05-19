@@ -491,8 +491,8 @@ global.applyEDIV = (instruction, parameters, stack) => {
             t2 = "mutez";
             break;
     }
-    output.optionType.push(t1);
-    output.optionType.push(t2);
+    // output.optionType.push(t1);
+    // output.optionType.push(t2);
     output.push(new Data("pair", [new Data(t1, [q.toString()]), new Data(t2, [r.toString()])]));
     return output;
 };
