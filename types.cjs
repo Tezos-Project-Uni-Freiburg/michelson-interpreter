@@ -62,14 +62,14 @@ class Delta {
 }
 
 class State {
-    constructor(gas_limit, amount, id, account, entrypoint, timestamp, address) {
-        this.gas_limit = gas_limit;
-        this.amount = amount;
-        this.id = id;
+    constructor(account, address, amount, entrypoint, gas_limit, id, timestamp) {
         this.account = account;
-        this.entrypoint = entrypoint;
-        this.timestamp = timestamp;
         this.address = address;
+        this.amount = amount;
+        this.entrypoint = entrypoint;
+        this.gas_limit = gas_limit;
+        this.id = id;
+        this.timestamp = timestamp;
     }
 }
 
