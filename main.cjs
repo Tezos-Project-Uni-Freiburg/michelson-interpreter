@@ -137,7 +137,6 @@ const argv = yargs(hideBin(process.argv))
     })
     .epilogue('Repo at https://github.com/berkaycagir/michelson-interpreter')
     .locale('en')
-    .version(false)
     .check(argv => fs.existsSync(argv.f) ? true : 'ERROR: Specified file does not exist')
     .argv;
 

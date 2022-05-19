@@ -2,8 +2,6 @@
 /* jshint esversion: 11 */
 /* jshint node: true */
 
-// const { v4: uuidv4 } = require('uuid');
-
 class Data {
     constructor(prim, value, name = "") {
         this.prim = prim;
