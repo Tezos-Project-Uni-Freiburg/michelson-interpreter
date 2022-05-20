@@ -123,7 +123,6 @@ const argv = yargs(hideBin(process.argv))
                 description: 'Timestamp as a string in RFC3339 notation or an int as an Unix time'
             }
     })
-    .epilogue('Repo at https://github.com/berkaycagir/michelson-interpreter')
     .locale('en')
     .check(argv => fs.existsSync(argv.f) ? true : 'ERROR: Specified file does not exist')
     .argv;
