@@ -16,8 +16,7 @@
         "base58check": "^2.0.0",
         "ethereum-cryptography": "^1.0.3",
         "nearley": "^2.20.1",
-        "yargs": "^17.5.1",
-        "michelson-interpreter": "git://github.com/JanLazz/michelson-interpreter.git"
+        "yargs": "^17.5.1"
     },
     "bin": "bin/michelson-interpreter.cjs",
     "type": "module"
