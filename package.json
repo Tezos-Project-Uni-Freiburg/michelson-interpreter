@@ -2,13 +2,14 @@
     "name": "michelson-interpreter",
     "version": "1.0.5",
     "description": "Michelson interpreter with step-by-step output",
+    "main": "index.js",
     "author": {
-        "name": "Hasan Berkay Cagir",
-        "email": "berkay@cagir.com.tr"
+        "name": "Jan Lazzari",
+        "email": "jan.lazzari@posteo.de"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/Tezos-Project-Uni-Freiburg/michelson-interpreter"
+        "url": "https://github.com/JanLazz/michelson-interpreter"
     },
     "dependencies": {
         "@ungap/structured-clone": "^0.3.4",
