@@ -2,6 +2,7 @@
     "name": "michelson-interpreter",
     "version": "1.0.6",
     "description": "Michelson interpreter with step-by-step output",
+    "main": "index.js",
     "author": {
         "name": "Jan Lazzari",
         "email": "jan.lazzari@posteo.de"
