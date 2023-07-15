@@ -14,7 +14,6 @@
         "@ungap/structured-clone": "^1.2.0",
         "base58check": "^2.0.0",
         "ethereum-cryptography": "^2.1.2",
-        "michelson-interpreter": "github:JanLazz/michelson-interpreter",
         "nearley": "^2.20.1",
         "yargs": "^17.7.2"
     },
