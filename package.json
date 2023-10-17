@@ -11,14 +11,6 @@
         "type": "git",
         "url": "https://github.com/JanLazz/michelson-interpreter"
     },
-    "dependencies": {
-        "@ungap/structured-clone": "^0.3.4",
-        "base58check": "^2.0.0",
-        "ethereum-cryptography": "^1.0.3",
-        "michelson-interpreter": "github:JanLazz/michelson-interpreter",
-        "nearley": "^2.20.1",
-        "yargs": "^17.5.1"
-    },
     "bin": "bin/michelson-interpreter.cjs",
     "type": "module"
 }
