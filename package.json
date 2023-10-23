@@ -18,6 +18,5 @@
         "nearley": "^2.20.1",
         "yargs": "^17.5.1"
     },
-    "bin": "bin/michelson-interpreter.cjs",
-    "type": "module"
+    "bin": "bin/michelson-interpreter.js"
 }

@@ -30,13 +30,13 @@ const fs = require("fs");
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
 
-const { Delta, State, Step } = require('../lib/types.cjs');
-const { initialize, processInstruction } = require("../lib/functions.cjs");
+const { State } = require('../lib/types.js');
+const { initialize, processInstruction } = require("../lib/functions.js");
 
-const Grammar = require("../michelson-parser/grammar.cjs");
+const Grammar = require("../michelson-parser/grammar.js");
 const parser = new nearley.Parser(nearley.Grammar.fromCompiled(Grammar));
 
-const michelsonInterpreter = require("../lib/michelson-interpreter-function.cjs");
+const michelsonInterpreter = require("../lib/michelson-interpreter-function.js");
 
 const argv = yargs(hideBin(process.argv))
     .usage("Usage: $0 [options]")

@@ -1,4 +1,4 @@
-import michelsonInterpreter from "michelson-interpreter/lib/michelson-interpreter-function.cjs";
-import { State } from "michelson-interpreter/lib/types.cjs";
+const michelsonInterpreter = require("michelson-interpreter/lib/michelson-interpreter-function.js");
+const { State } = require("michelson-interpreter/lib/types.js");
 
-export default { michelsonInterpreter, State };
+module.exports = { michelsonInterpreter, State };
